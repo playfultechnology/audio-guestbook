@@ -4,3 +4,5 @@ The audio guestbook is a converted telephone handset that guests can use to leav
 Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
 
 ![](https://github.com/playfultechnology/audio-guestbook/raw/main/thumbnail.jpg)
+
+![](https://raw.githubusercontent.com/playfultechnology/audio-guestbook/main/AudioGuestbook_bb.jpg)
