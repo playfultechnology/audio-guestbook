@@ -8,24 +8,22 @@
  * Then, recording starts, and continues until the handset is replaced.
  * Playback button allows all messages currently saved on SD card through earpiece 
  * 
- * Files are saved on SD card as 44.1kHz, 16-bit, mono signed integer RAW audio format
- * These can be loaded directly into Audacity (https://www.audacityteam.org/). Or else, converted to WAV/MP3 format using SOX (https://sourceforge.net/projects/sox/)
+ * Files are saved on SD card as 44.1kHz, 16-bit, mono signed integer RAW audio format --> changed this to WAV recording, DD4WH 2022_07_31
  * 
- **/
+ * 
+ * Frank DD4WH, July, 31st 2022 
+ * for a DBP 611 telephone (closed contact when handheld is lifted) & with recording to WAV file
+ * contact for switch button 0 is closed when handheld is lifted
+ * 
+ */
 
-// INCLUDES
-// The default "sketchbook" location in which Arduino IDE installs libraries is:
-// C:\Users\alast\Documents\Arduino
-// However, the TeensyDuino installer installs libraries in:
-// C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries
-// To ensure the correct libraries are used when targetting Teensy platform in Arduino IDE, go File->Preferences and change the sketchbook location to avoid conflicts with Arduino libraries.
-// When targetting Arduino boards, change it back again to default
 #include <Bounce.h>
 #include <Audio.h>
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
 #include <TimeLib.h>
+#include <MTP_Teensy.h>
 
 // DEFINES
 // Define pins used by Teensy Audio Shield
@@ -41,17 +39,14 @@
 // Inputs
 AudioSynthWaveform      waveform1; // To create the "beep" sfx
 AudioInputI2S           i2s2; // I2S input from microphone on audio shield
-AudioPlaySdRaw          playRaw1; // Play .RAW audio files saved on SD card
 AudioPlaySdWav          playWav1; // Play 44.1kHz 16-bit PCM greeting WAV file
-// Outputs
 AudioRecordQueue         queue1; // Creating an audio buffer in memory before saving to SD
 AudioMixer4              mixer; // Allows merging several inputs to same output
 AudioOutputI2S           i2s1; // I2S interface to Speaker/Line Out on Audio shield
-// Connections
 AudioConnection patchCord1(waveform1, 0, mixer, 0); // wave to mixer 
-AudioConnection patchCord2(playRaw1, 0, mixer, 1); // raw audio to mixer
-AudioConnection patchCord3(playWav1, 0, mixer, 2); // wav file playback mixer
+AudioConnection patchCord3(playWav1, 0, mixer, 1); // wav file playback mixer
 AudioConnection patchCord4(mixer, 0, i2s1, 0); // mixer output to speaker (L)
+AudioConnection patchCord6(mixer, 0, i2s1, 1); // mixer output to speaker (R)
 AudioConnection patchCord5(i2s2, 0, queue1, 0); // mic input to queue (L)
 AudioControlSGTL5000     sgtl5000_1;
 
@@ -60,22 +55,39 @@ char filename[15];
 // The file object itself
 File frec;
 
-// Use long 40ms debounce time on hook switch
+// Use long 40ms debounce time on both switches
 Bounce buttonRecord = Bounce(HOOK_PIN, 40);
-Bounce buttonPlay = Bounce(PLAYBACK_BUTTON_PIN, 8);
+Bounce buttonPlay = Bounce(PLAYBACK_BUTTON_PIN, 40);
 
 // Keep track of current state of the device
 enum Mode {Initialising, Ready, Prompting, Recording, Playing};
 Mode mode = Mode::Initialising;
 
+float beep_volume = 0.02f;
+
+// variables for writing to WAV file
+unsigned long ChunkSize = 0L;
+unsigned long Subchunk1Size = 16;
+unsigned int AudioFormat = 1;
+unsigned int numChannels = 1;
+unsigned long sampleRate = 44100;
+unsigned int bitsPerSample = 16;
+unsigned long byteRate = sampleRate*numChannels*(bitsPerSample/8);// samplerate x channels x (bitspersample / 8)
+unsigned int blockAlign = numChannels*bitsPerSample/8;
+unsigned long Subchunk2Size = 0L;
+unsigned long recByteSaved = 0L;
+unsigned long NumSamples = 0L;
+byte byte1, byte2, byte3, byte4;
+//elapsedMicros usec = 0;
+//unsigned int lastTime=0;
+
 void setup() {
 
-  // Note that Serial.begin() is not required for Teensy - 
-  // by default it initialises serial communication at full USB speed
-  // See https://www.pjrc.com/teensy/td_serial.html
-  // Serial.begin()
-  Serial.println(__FILE__ __DATE__);
-  
+  Serial.begin(9600);
+  while (!Serial && millis() < 5000) {
+    // wait for serial port to connect.
+  }
+  Serial.println("Serial set up correctly");
   // Configure the input pins
   pinMode(HOOK_PIN, INPUT_PULLUP);
   pinMode(PLAYBACK_BUTTON_PIN, INPUT_PULLUP);
@@ -88,29 +100,41 @@ void setup() {
   sgtl5000_1.enable();
   // Define which input on the audio shield to use (AUDIO_INPUT_LINEIN / AUDIO_INPUT_MIC)
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
-  sgtl5000_1.volume(0.5);
+  //sgtl5000_1.adcHighPassFilterDisable(); //
+  sgtl5000_1.volume(0.95);
+
+  mixer.gain(0, 1.0f);
+  mixer.gain(1, 1.0f);
 
   // Play a beep to indicate system is online
-  waveform1.begin(WAVEFORM_SINE);
-  waveform1.frequency(440);
-  waveform1.amplitude(0.9);
-  wait(250);
+  waveform1.begin(beep_volume, 440, WAVEFORM_SINE);
+  wait(1000);
   waveform1.amplitude(0);
   delay(1000);
 
   // Initialize the SD card
   SPI.setMOSI(SDCARD_MOSI_PIN);
   SPI.setSCK(SDCARD_SCK_PIN);
-  if (!(SD.begin(SDCARD_CS_PIN))) {
+  if (!(SD.begin(SDCARD_CS_PIN))) 
+  {
     // stop here if no SD card, but print a message
     while (1) {
       Serial.println("Unable to access the SD card");
       delay(500);
     }
   }
+    else Serial.println("SD card correctly initialized");
 
-  // Value in dB
-  sgtl5000_1.micGain(15);
+  // mandatory to begin the MTP session.
+    MTP.begin();
+
+  // Add SD Card
+    MTP.addFilesystem(SD, "SD Card");
+    Serial.println("Added SD card via MTP");
+    
+    // Value in dB
+//  sgtl5000_1.micGain(15);
+  sgtl5000_1.micGain(5); // much lower gain is required for the AOM5024 electret capsule
 
   // Synchronise the Time object used in the program code with the RTC time provider.
   // See https://github.com/PaulStoffregen/Time
@@ -130,13 +154,14 @@ void loop() {
 
   switch(mode){
     case Mode::Ready:
-      // Rising edge occurs when the handset is lifted
-      if (buttonRecord.risingEdge()) {
+      // Falling edge occurs when the handset is lifted --> 611 telephone
+      if (buttonRecord.fallingEdge()) {
         Serial.println("Handset lifted");
         mode = Mode::Prompting;
       }
       else if(buttonPlay.fallingEdge()) {
         playAllRecordings();
+        //playLastRecording();
       }
       break;
 
@@ -149,19 +174,26 @@ void loop() {
       while (playWav1.isPlaying()) {
         // Check whether the handset is replaced
         buttonRecord.update();
+        buttonPlay.update();
         // Handset is replaced
-        if(buttonRecord.fallingEdge()) {
+        if(buttonRecord.risingEdge()) {
           playWav1.stop();
           mode = Mode::Ready;
           return;
         }
+        if(buttonPlay.fallingEdge()) {
+          playWav1.stop();
+          playAllRecordings();
+          //playLastRecording();
+          return;
+        }
+        
       }
       // Debug message
       Serial.println("Starting Recording");
       // Play the tone sound effect
-      waveform1.frequency(440);
-      waveform1.amplitude(0.9);
-      wait(250);
+      waveform1.begin(beep_volume, 440, WAVEFORM_SINE);
+      wait(1250);
       waveform1.amplitude(0);
       // Start the recording function
       startRecording();
@@ -169,19 +201,27 @@ void loop() {
 
     case Mode::Recording:
       // Handset is replaced
-      if(buttonRecord.fallingEdge()){
+      if(buttonRecord.risingEdge()){
         // Debug log
         Serial.println("Stopping Recording");
         // Stop recording
         stopRecording();
         // Play audio tone to confirm recording has ended
         waveform1.frequency(523.25);
-        waveform1.amplitude(0.9);
-        wait(50);
+        waveform1.amplitude(beep_volume);
+        wait(250);
         waveform1.amplitude(0);
-        wait(50);
-        waveform1.amplitude(0.9);
-        wait(50);
+        wait(250);
+        waveform1.amplitude(beep_volume);
+        wait(250);
+        waveform1.amplitude(0);
+        wait(250);
+        waveform1.amplitude(beep_volume);
+        wait(250);
+        waveform1.amplitude(0);
+        wait(250);
+        waveform1.amplitude(beep_volume);
+        wait(250);
         waveform1.amplitude(0);
       }
       else {
@@ -192,13 +232,15 @@ void loop() {
     case Mode::Playing:
       break;  
   }   
+  MTP.loop();  //This is mandatory to be placed in the loop code.
 }
 
 void startRecording() {
   // Find the first available file number
   for (uint8_t i=0; i<9999; i++) {
     // Format the counter as a five-digit number with leading zeroes, followed by file extension
-    snprintf(filename, 11, " %05d.RAW", i);
+//    snprintf(filename, 11, " %05d.RAW", i);
+    snprintf(filename, 11, " %05d.wav", i);
     // Create if does not exist, do not open existing, write, sync after write
     if (!SD.exists(filename)) {
       break;
@@ -210,6 +252,7 @@ void startRecording() {
     Serial.println(filename);
     queue1.begin();
     mode = Mode::Recording;
+    recByteSaved = 0L;
   }
   else {
     Serial.println("Couldn't open file to record!");
@@ -230,6 +273,7 @@ void continueRecording() {
     queue1.freeBuffer();
     // Write all 512 bytes to the SD card
     frec.write(buffer, 512);
+    recByteSaved += 512;
   }
 }
 
@@ -241,7 +285,9 @@ void stopRecording() {
     // Save to open file
     frec.write((byte*)queue1.readBuffer(), 256);
     queue1.freeBuffer();
+    recByteSaved += 256;
   }
+  writeOutHeader();
   // Close the file
   frec.close();
   mode = Mode::Ready;
@@ -254,32 +300,37 @@ void playAllRecordings() {
   
   while (true) {
     File entry =  dir.openNextFile();
+    if (strstr(entry.name(), "greeting"))
+    {
+       entry =  dir.openNextFile();
+    }
     if (!entry) {
       // no more files
       entry.close();
       break;
     }
-
     int8_t len = strlen(entry.name());
-    if (strstr(strlwr(entry.name() + (len - 4)), ".raw")) {
+//    if (strstr(strlwr(entry.name() + (len - 4)), ".raw")) {
+    if (strstr(strlwr(entry.name() + (len - 4)), ".wav")) {
       Serial.print("Now playing ");
       Serial.println(entry.name());
       // Play a short beep before each message
-      waveform1.amplitude(0.5);
-      wait(250);
+      waveform1.amplitude(beep_volume);
+      wait(750);
       waveform1.amplitude(0);
       // Play the file
-      playRaw1.play(entry.name());
+      playWav1.play(entry.name());
       mode = Mode::Playing;
     }
     entry.close();
 
-    while (playRaw1.isPlaying()) {
+//    while (playWav1.isPlaying()) { // strangely enough, this works for playRaw, but it does not work properly for playWav
+    while (!playWav1.isStopped()) { // this works for playWav
       buttonPlay.update();
       buttonRecord.update();
       // Button is pressed again
-      if(buttonPlay.risingEdge() || buttonRecord.fallingEdge()) {
-        playRaw1.stop();
+      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) {
+        playWav1.stop();
         mode = Mode::Ready;
         return;
       }   
@@ -320,4 +371,59 @@ void wait(unsigned int milliseconds) {
     if (buttonRecord.risingEdge()) Serial.println("Button (pin 0) Release");
     if (buttonPlay.risingEdge()) Serial.println("Button (pin 1) Release");
   }
+}
+
+
+void writeOutHeader() { // update WAV header with final filesize/datasize
+
+//  NumSamples = (recByteSaved*8)/bitsPerSample/numChannels;
+//  Subchunk2Size = NumSamples*numChannels*bitsPerSample/8; // number of samples x number of channels x number of bytes per sample
+  Subchunk2Size = recByteSaved;
+  ChunkSize = Subchunk2Size + 36;
+  frec.seek(0);
+  frec.write("RIFF");
+  byte1 = ChunkSize & 0xff;
+  byte2 = (ChunkSize >> 8) & 0xff;
+  byte3 = (ChunkSize >> 16) & 0xff;
+  byte4 = (ChunkSize >> 24) & 0xff;  
+  frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
+  frec.write("WAVE");
+  frec.write("fmt ");
+  byte1 = Subchunk1Size & 0xff;
+  byte2 = (Subchunk1Size >> 8) & 0xff;
+  byte3 = (Subchunk1Size >> 16) & 0xff;
+  byte4 = (Subchunk1Size >> 24) & 0xff;  
+  frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
+  byte1 = AudioFormat & 0xff;
+  byte2 = (AudioFormat >> 8) & 0xff;
+  frec.write(byte1);  frec.write(byte2); 
+  byte1 = numChannels & 0xff;
+  byte2 = (numChannels >> 8) & 0xff;
+  frec.write(byte1);  frec.write(byte2); 
+  byte1 = sampleRate & 0xff;
+  byte2 = (sampleRate >> 8) & 0xff;
+  byte3 = (sampleRate >> 16) & 0xff;
+  byte4 = (sampleRate >> 24) & 0xff;  
+  frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
+  byte1 = byteRate & 0xff;
+  byte2 = (byteRate >> 8) & 0xff;
+  byte3 = (byteRate >> 16) & 0xff;
+  byte4 = (byteRate >> 24) & 0xff;  
+  frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
+  byte1 = blockAlign & 0xff;
+  byte2 = (blockAlign >> 8) & 0xff;
+  frec.write(byte1);  frec.write(byte2); 
+  byte1 = bitsPerSample & 0xff;
+  byte2 = (bitsPerSample >> 8) & 0xff;
+  frec.write(byte1);  frec.write(byte2); 
+  frec.write("data");
+  byte1 = Subchunk2Size & 0xff;
+  byte2 = (Subchunk2Size >> 8) & 0xff;
+  byte3 = (Subchunk2Size >> 16) & 0xff;
+  byte4 = (Subchunk2Size >> 24) & 0xff;  
+  frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
+  frec.close();
+  Serial.println("header written"); 
+  Serial.print("Subchunk2: "); 
+  Serial.println(Subchunk2Size); 
 }
