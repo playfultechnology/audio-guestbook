@@ -11,8 +11,8 @@ Watch the full step-by-step tutorial on how to use the code here to build your o
 * does not play the greeting message again when you want to listen to your recordings
 * do not forget that your greeting message has to be recorded as a wav with a sample rate of 44.1ksps, otherwise it is not played
 
-**My hardware:**
-* telephone
+**DD4WH hardware:**
+* telephone model "POST FeTAp 611-2a", built about 1978
 * Teensy 4.0
 * Audio Board for Teensy 4
 * AOM5024 electret low noise microphone capsule
