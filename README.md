@@ -7,7 +7,9 @@ Modifications by DD4WH, August 1st, 2022:
 * recordings are now saved as WAV files
 * recordings on the SD card can be accessed via USB, no more need to take out the SD card
 * code modifications for a telephone with closing contact as the handheld is being lifted
-* does not play the greeting message, when you want to listen to your recordings 
+* does not play the greeting message again when you want to listen to your recordings 
+
+
 
 
 ![](https://github.com/playfultechnology/audio-guestbook/raw/main/thumbnail.jpg)
