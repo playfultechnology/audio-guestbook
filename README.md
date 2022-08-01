@@ -17,6 +17,7 @@ Watch the full step-by-step tutorial on how to use the code here to build your o
 * Audio Board for Teensy 4
 * AOM5024 electret low noise microphone capsule
 * push button with red knob
+* microUSB to USB-A cable 
 * shielded microphone cable
 
 
