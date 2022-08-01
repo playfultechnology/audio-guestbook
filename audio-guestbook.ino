@@ -13,9 +13,11 @@
  * --> added MTP support, which enables copying WAV files from the SD card via the USB connection, DD4WH 2022_08_01
  * 
  * 
- * Frank DD4WH, July, 31st 2022 
+ * Frank DD4WH, August 1st 2022 
  * for a DBP 611 telephone (closed contact when handheld is lifted) & with recording to WAV file
  * contact for switch button 0 is closed when handheld is lifted
+ * 
+ * GNU GPL v3.0 license
  * 
  */
 
@@ -39,18 +41,18 @@
 // GLOBALS
 // Audio initialisation code can be generated using the GUI interface at https://www.pjrc.com/teensy/gui/
 // Inputs
-AudioSynthWaveform      waveform1; // To create the "beep" sfx
-AudioInputI2S           i2s2; // I2S input from microphone on audio shield
-AudioPlaySdWav          playWav1; // Play 44.1kHz 16-bit PCM greeting WAV file
-AudioRecordQueue         queue1; // Creating an audio buffer in memory before saving to SD
-AudioMixer4              mixer; // Allows merging several inputs to same output
-AudioOutputI2S           i2s1; // I2S interface to Speaker/Line Out on Audio shield
+AudioSynthWaveform          waveform1; // To create the "beep" sfx
+AudioInputI2S               i2s2; // I2S input from microphone on audio shield
+AudioPlaySdWav              playWav1; // Play 44.1kHz 16-bit PCM greeting WAV file
+AudioRecordQueue            queue1; // Creating an audio buffer in memory before saving to SD
+AudioMixer4                 mixer; // Allows merging several inputs to same output
+AudioOutputI2S              i2s1; // I2S interface to Speaker/Line Out on Audio shield
 AudioConnection patchCord1(waveform1, 0, mixer, 0); // wave to mixer 
 AudioConnection patchCord3(playWav1, 0, mixer, 1); // wav file playback mixer
 AudioConnection patchCord4(mixer, 0, i2s1, 0); // mixer output to speaker (L)
 AudioConnection patchCord6(mixer, 0, i2s1, 1); // mixer output to speaker (R)
 AudioConnection patchCord5(i2s2, 0, queue1, 0); // mic input to queue (L)
-AudioControlSGTL5000     sgtl5000_1;
+AudioControlSGTL5000      sgtl5000_1;
 
 // Filename to save audio recording on SD card
 char filename[15];
@@ -65,7 +67,7 @@ Bounce buttonPlay = Bounce(PLAYBACK_BUTTON_PIN, 40);
 enum Mode {Initialising, Ready, Prompting, Recording, Playing};
 Mode mode = Mode::Initialising;
 
-float beep_volume = 0.04f;
+float beep_volume = 0.04f; // not too loud :-)
 
 // variables for writing to WAV file
 unsigned long ChunkSize = 0L;
@@ -132,7 +134,7 @@ void setup() {
 
   // Add SD Card
 //    MTP.addFilesystem(SD, "SD Card");
-    MTP.addFilesystem(SD, "Kais Audio guestbook");
+    MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
     Serial.println("Added SD card via MTP");
     
     // Value in dB
@@ -229,7 +231,7 @@ void loop() {
 
 void startRecording() {
   // Find the first available file number
-//  for (uint8_t i=0; i<9999; i++) { // FIXME: uint8_t overflows if it reaches 255 !!!  
+//  for (uint8_t i=0; i<9999; i++) { // BUGFIX uint8_t overflows if it reaches 255  
   for (uint16_t i=0; i<9999; i++) {   
     // Format the counter as a five-digit number with leading zeroes, followed by file extension
     snprintf(filename, 11, " %05d.wav", i);
@@ -307,7 +309,7 @@ void playAllRecordings() {
     //int8_t len = strlen(entry.name()) - 4;
 //    if (strstr(strlwr(entry.name() + (len - 4)), ".raw")) {
 //    if (strstr(strlwr(entry.name() + (len - 4)), ".wav")) {
-    // the lines above throw a warning, so I replace them with this:
+    // the lines above throw a warning, so I replace them with this (which is also easier to read):
     if (strstr(entry.name(), ".wav") || strstr(entry.name(), ".WAV")) {
       Serial.print("Now playing ");
       Serial.println(entry.name());
@@ -326,7 +328,7 @@ void playAllRecordings() {
       buttonPlay.update();
       buttonRecord.update();
       // Button is pressed again
-//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIXME !!!
+//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
       if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { 
         playWav1.stop();
         mode = Mode::Ready; print_mode();
@@ -359,7 +361,7 @@ void playLastRecording() {
       buttonPlay.update();
       buttonRecord.update();
       // Button is pressed again
-//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) {
+//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
       if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
         playWav1.stop();
         mode = Mode::Ready; print_mode();
