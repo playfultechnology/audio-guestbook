@@ -13,7 +13,7 @@ Watch the full step-by-step tutorial on how to use the code here to build your o
 * do not forget that your greeting message has to be recorded as a wav with a sample rate of 44.1ksps, otherwise it is not played
 
 **DD4WH hardware:**
-* telephone model "POST FeTAp 611-2a", built about 1978
+* telephone model "POST FeTAp 611-2a", built about 1972
 * Teensy 4.0
 * Audio Board for Teensy 4
 * AOM5024 electret low noise microphone capsule (the original mic capsule was thrown away)
