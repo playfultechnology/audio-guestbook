@@ -164,8 +164,8 @@ void loop() {
         mode = Mode::Prompting; print_mode();
       }
       else if(buttonPlay.fallingEdge()) {
-        playAllRecordings();
-        //playLastRecording();
+        //playAllRecordings();
+        playLastRecording();
       }
       break;
 
@@ -188,8 +188,8 @@ void loop() {
         }
         if(buttonPlay.fallingEdge()) {
           playWav1.stop();
-          playAllRecordings();
-          //playLastRecording();
+          //playAllRecordings();
+          playLastRecording();
           return;
         }
         
@@ -227,9 +227,9 @@ void loop() {
 
 void startRecording() {
   // Find the first available file number
-  for (uint8_t i=0; i<9999; i++) {
+//  for (uint8_t i=0; i<9999; i++) { // FIXME: uint8_t overflows if it reaches 255 !!!  
+  for (uint16_t i=0; i<9999; i++) {   
     // Format the counter as a five-digit number with leading zeroes, followed by file extension
-//    snprintf(filename, 11, " %05d.RAW", i);
     snprintf(filename, 11, " %05d.wav", i);
     // Create if does not exist, do not open existing, write, sync after write
     if (!SD.exists(filename)) {
@@ -322,7 +322,8 @@ void playAllRecordings() {
       buttonPlay.update();
       buttonRecord.update();
       // Button is pressed again
-      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) {
+//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIXME !!!
+      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { // FIXME !!!
         playWav1.stop();
         mode = Mode::Ready; print_mode();
         return;
@@ -332,6 +333,41 @@ void playAllRecordings() {
   // All files have been played
   mode = Mode::Ready; print_mode();
 }
+
+void playLastRecording() {
+  // Find the first available file number
+  uint16_t idx = 0; 
+  for (uint16_t i=0; i<9999; i++) {
+    // Format the counter as a five-digit number with leading zeroes, followed by file extension
+    snprintf(filename, 11, " %05d.wav", i);
+    // check, if file with index i exists
+    if (!SD.exists(filename)) {
+     idx = i - 1;
+     break;
+      }
+  }
+      // now play file with index idx == last recorded file
+      snprintf(filename, 11, " %05d.wav", idx);
+      Serial.println(filename);
+      Serial.println(" wird das abgespielt ???");
+      playWav1.play(filename);
+      mode = Mode::Playing; print_mode();
+      while (!playWav1.isStopped()) { // this works for playWav
+      buttonPlay.update();
+      buttonRecord.update();
+      // Button is pressed again
+//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) {
+      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
+        playWav1.stop();
+        mode = Mode::Ready; print_mode();
+        return;
+      }   
+    }
+      // file has been played
+  mode = Mode::Ready; print_mode();  
+  end_Beep();
+}
+
 
 // Retrieve the current time from Teensy built-in RTC
 time_t getTeensy3Time(){
