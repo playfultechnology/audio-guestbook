@@ -8,7 +8,9 @@
  * Then, recording starts, and continues until the handset is replaced.
  * Playback button allows all messages currently saved on SD card through earpiece 
  * 
- * Files are saved on SD card as 44.1kHz, 16-bit, mono signed integer RAW audio format --> changed this to WAV recording, DD4WH 2022_07_31
+ * Files are saved on SD card as 44.1kHz, 16-bit, mono signed integer RAW audio format 
+ * --> changed this to WAV recording, DD4WH 2022_07_31
+ * --> added MTP support, which enables copying WAV files from the SD card via the USB connection, DD4WH 2022_08_01
  * 
  * 
  * Frank DD4WH, July, 31st 2022 
