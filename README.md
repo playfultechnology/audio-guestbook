@@ -3,6 +3,11 @@ The audio guestbook is a converted telephone handset that guests can use to leav
 
 Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
 
+DD4WH, August 1st, 2022:
+* recordings are now saved as WAV files
+* recordings on the SD card can be accessed via USB, no more need to take out the SD card
+* modified the code for a telephone with closing contact as the handheld is being lifted
+
 ![](https://github.com/playfultechnology/audio-guestbook/raw/main/thumbnail.jpg)
 
 ![](https://raw.githubusercontent.com/playfultechnology/audio-guestbook/main/AudioGuestbook_bb.jpg)
