@@ -80,8 +80,7 @@ unsigned long Subchunk2Size = 0L;
 unsigned long recByteSaved = 0L;
 unsigned long NumSamples = 0L;
 byte byte1, byte2, byte3, byte4;
-//elapsedMicros usec = 0;
-//unsigned int lastTime=0;
+
 
 void setup() {
 
@@ -219,7 +218,10 @@ void loop() {
       }
       break;
 
-    case Mode::Playing:
+    case Mode::Playing: // to make compiler happy
+      break;  
+
+    case Mode::Initialising: // to make compiler happy
       break;  
   }   
   MTP.loop();  //This is mandatory to be placed in the loop code.
@@ -302,9 +304,11 @@ void playAllRecordings() {
       end_Beep();
       break;
     }
-    int8_t len = strlen(entry.name());
+    //int8_t len = strlen(entry.name()) - 4;
 //    if (strstr(strlwr(entry.name() + (len - 4)), ".raw")) {
-    if (strstr(strlwr(entry.name() + (len - 4)), ".wav")) {
+//    if (strstr(strlwr(entry.name() + (len - 4)), ".wav")) {
+    // the lines above throw a warning, so I replace them with this:
+    if (strstr(entry.name(), ".wav") || strstr(entry.name(), ".WAV")) {
       Serial.print("Now playing ");
       Serial.println(entry.name());
       // Play a short beep before each message
@@ -323,7 +327,7 @@ void playAllRecordings() {
       buttonRecord.update();
       // Button is pressed again
 //      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIXME !!!
-      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { // FIXME !!!
+      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { 
         playWav1.stop();
         mode = Mode::Ready; print_mode();
         return;
@@ -349,7 +353,6 @@ void playLastRecording() {
       // now play file with index idx == last recorded file
       snprintf(filename, 11, " %05d.wav", idx);
       Serial.println(filename);
-      Serial.println(" wird das abgespielt ???");
       playWav1.play(filename);
       mode = Mode::Playing; print_mode();
       while (!playWav1.isStopped()) { // this works for playWav
