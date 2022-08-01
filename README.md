@@ -15,7 +15,7 @@ Watch the full step-by-step tutorial on how to use the code here to build your o
 * telephone model "POST FeTAp 611-2a", built about 1978
 * Teensy 4.0
 * Audio Board for Teensy 4
-* AOM5024 electret low noise microphone capsule
+* AOM5024 electret low noise microphone capsule (the original mic capsule was thrown away)
 * push button with red knob
 * microUSB to USB-A cable 
 * shielded microphone cable
