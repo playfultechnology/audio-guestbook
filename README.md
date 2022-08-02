@@ -11,6 +11,7 @@ Watch the full step-by-step tutorial on how to use the code here to build your o
 * does not play the greeting message again when you want to listen to your recordings
 * some bugfixes and warnings eliminated
 * do not forget that your greeting message has to be recorded as a wav with a sample rate of 44.1ksps, otherwise it is not played
+* compile the code with CPU speed 150MHz, this can save a lot of battery power (reduction by about 70%)
 
 **DD4WH hardware:**
 * telephone model "POST FeTAp 611-2a", built about 1972
