@@ -3,6 +3,29 @@ The audio guestbook is a converted telephone handset that guests can use to leav
 
 Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
 
+**Some hints on building this audio guestbook**
+
+* Best connection of the Teensy and audio board is through headers. Do not use cables for that connection, the connections have to be as short as possible.
+* for the button connections every wire quality is OK !
+
+* AUDIO Quality / microphone:
+* if you use a new electret microphone capsule (and not the original telephone mic capsule), I recommend to use a separate shielded mic cable and NOT the original cable (which -in most cases- will have no shielding at all). The shielded cable will have a shield and two internal wires (most often red and white wire) and should be soldered like this.
+
+MICROPHONE end of the cable:
+* solder the red cable to the + terminal of the microphone (Yes, polarity does really matter in this case :-))
+* solder the white cable to the - or GND terminal of the microphone
+* LEAVE THE SHIELD UNCONNECTED AT THIS END OF THE CABLE
+AUDIO BOARD end of the cable
+* solder the red cable to the "MIC" connector on the audio board
+* solder the shield to the white cable (YES, exactly) and solder the common connection to the GND connection of the audio board
+--> if you follow these steps EXACTLY, hum and other noise could be minimized
+
+COMPILING the code:
+* the sketch with the MTP lib only works with the latest Teensyduino 1.57 version, so please update your Arduino IDE AND your Teensyduino to Arduino version 1.8.19 and the latest Teensyduino version 1.57
+* download the following library and put it into your local Arduino folder: https://github.com/KurtE/MTP_Teensy
+* compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz"
+
+
 **Modifications by DD4WH, August 1st, 2022:**
 * recordings are now saved as WAV files
 * recordings on the SD card can be accessed via USB, no more need to take out the SD card
