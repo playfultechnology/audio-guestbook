@@ -3,7 +3,7 @@ The audio guestbook is a converted telephone handset that guests can use to leav
 
 Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
 
-**Some hints on building this audio guestbook**
+**Some additional hints on building this audio guestbook (DD4WH, August 4th, 2022)**
 
 * Best connection of the Teensy and audio board is through headers. Do not use cables for that connection, the connections have to be as short as possible.
 * for the button connections every wire quality is OK !
