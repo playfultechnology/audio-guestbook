@@ -11,11 +11,16 @@
  * Files are saved on SD card as 44.1kHz, 16-bit, mono signed integer RAW audio format 
  * --> changed this to WAV recording, DD4WH 2022_07_31
  * --> added MTP support, which enables copying WAV files from the SD card via the USB connection, DD4WH 2022_08_01
+ * --> compile with option CPU speed 150MHz to save a lot of power
  * 
  * 
  * Frank DD4WH, August 1st 2022 
  * for a DBP 611 telephone (closed contact when handheld is lifted) & with recording to WAV file
  * contact for switch button 0 is closed when handheld is lifted
+ * 
+ * IF YOUR TELEPHONE OPENS THE HANDHELD CONTACT WHEN THE HANDHELD IS LIFTED:
+ * 
+ * - you have to alter the code in some places
  * 
  * GNU GPL v3.0 license
  * 
@@ -37,6 +42,10 @@
 // And those used for inputs
 #define HOOK_PIN 0
 #define PLAYBACK_BUTTON_PIN 1
+
+// comment his out, if your handheld OPENS the contact on lift
+// use a digital voltmeter to find out
+#define HANDHELD_CLOSES_ON_LIFT
 
 // GLOBALS
 // Audio initialisation code can be generated using the GUI interface at https://www.pjrc.com/teensy/gui/
@@ -160,8 +169,12 @@ void loop() {
   switch(mode){
     case Mode::Ready:
       // Falling edge occurs when the handset is lifted --> 611 telephone
+#ifdef HANDHELD_CLOSES_ON_LIFT
       if (buttonRecord.fallingEdge()) {
-        Serial.println("Handset lifted");
+#else
+      if (buttonRecord.risingEdge()) {
+#endif
+      Serial.println("Handset lifted");
         mode = Mode::Prompting; print_mode();
       }
       else if(buttonPlay.fallingEdge()) {
@@ -182,7 +195,12 @@ void loop() {
         buttonRecord.update();
         buttonPlay.update();
         // Handset is replaced
-        if(buttonRecord.risingEdge()) {
+//        if(buttonRecord.risingEdge()) {
+#ifdef HANDHELD_CLOSES_ON_LIFT
+      if (buttonRecord.risingEdge()) {
+#else
+      if (buttonRecord.fallingEdge()) {
+#endif
           playWav1.stop();
           mode = Mode::Ready; print_mode();
           return;
@@ -207,7 +225,12 @@ void loop() {
 
     case Mode::Recording:
       // Handset is replaced
-      if(buttonRecord.risingEdge()){
+//      if(buttonRecord.risingEdge()){
+#ifdef HANDHELD_CLOSES_ON_LIFT
+      if (buttonRecord.risingEdge()) {
+#else
+      if (buttonRecord.fallingEdge()) {
+#endif
         // Debug log
         Serial.println("Stopping Recording");
         // Stop recording
@@ -329,7 +352,12 @@ void playAllRecordings() {
       buttonRecord.update();
       // Button is pressed again
 //      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
+#ifdef HANDHELD_CLOSES_ON_LIFT
       if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { 
+#else
+      if(buttonPlay.fallingEdge() || buttonRecord.fallingEdge()) { 
+#endif
+//      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { 
         playWav1.stop();
         mode = Mode::Ready; print_mode();
         return;
@@ -362,7 +390,12 @@ void playLastRecording() {
       buttonRecord.update();
       // Button is pressed again
 //      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
-      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
+//      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
+#ifdef HANDHELD_CLOSES_ON_LIFT
+      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { 
+#else
+      if(buttonPlay.fallingEdge() || buttonRecord.fallingEdge()) { 
+#endif
         playWav1.stop();
         mode = Mode::Ready; print_mode();
         return;
