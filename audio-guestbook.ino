@@ -8,19 +8,20 @@
  * Then, recording starts, and continues until the handset is replaced.
  * Playback button allows all messages currently saved on SD card through earpiece 
  * 
+ * follow these instructions:
+ * https://github.com/DD4WH/audio-guestbook/blob/main/README.md
+ * 
+ * 
+ *   the sketch only works with the latest Teensyduino 1.57 version, so please update your Arduino IDE AND your Teensyduino to Arduino version 1.8.19 and the latest Teensyduino version 1.57
+ *   download the following library, unzip it and put it into your local Arduino folder (on my computer, the local Arduino folder is: "C:/Users/DD4WH/Documents/Arduino/libraries/"): https://github.com/KurtE/MTP_Teensy
+ *   compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz" (this can save about 70% of battery power)
+ *
+ * 
  * Files are saved on SD card as 44.1kHz, 16-bit, mono signed integer RAW audio format 
  * --> changed this to WAV recording, DD4WH 2022_07_31
  * --> added MTP support, which enables copying WAV files from the SD card via the USB connection, DD4WH 2022_08_01
- * --> compile with option CPU speed 150MHz to save a lot of power
+ * --> if your handheld contact switch opens on lifting, uncomment the #define line below
  * 
- * 
- * Frank DD4WH, August 1st 2022 
- * for a DBP 611 telephone (closed contact when handheld is lifted) & with recording to WAV file
- * contact for switch button 0 is closed when handheld is lifted
- * 
- * IF YOUR TELEPHONE OPENS THE HANDHELD CONTACT WHEN THE HANDHELD IS LIFTED:
- * 
- * - you have to alter the code in some places
  * 
  * GNU GPL v3.0 license
  * 
