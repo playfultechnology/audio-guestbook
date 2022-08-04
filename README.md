@@ -21,6 +21,8 @@ AUDIO BOARD end of the cable
 * solder the shield to the white cable (YES, exactly) and solder the common connection to the GND connection of the audio board
 --> if you follow these steps EXACTLY, hum and other noise could be minimized
 
+![grafik](https://user-images.githubusercontent.com/14326464/182857070-9d98190a-44d2-4ce2-9e2f-b01b3b82eaa5.png)
+
 **COMPILING the code:**
 * determine, whether your telephone closes contact or opens contact when you lift the handheld (use a voltmeter)
 * if your handheld contact/switch OPENS when you lift the handheld, comment out the following line in the sketch as follows: 
