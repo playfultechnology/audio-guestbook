@@ -21,14 +21,14 @@ AUDIO BOARD end of the cable
 * solder the shield to the white cable (YES, exactly) and solder the common connection to the GND connection of the audio board
 --> if you follow these steps EXACTLY, hum and other noise could be minimized
 
-COMPILING the code:
+**COMPILING the code:**
 * determine, whether your telephone closes contact or opens contact when you lift the handheld (use a voltmeter)
 * if your handheld contact/switch OPENS when you lift the handheld, comment out the following line in the sketch as follows: 
 * `//#define HANDHELD_CLOSES_ON_LIFT` 
 * if your handheld contact/switch CLOSES when you lift the handheld, do not modify that line :-)
 `#define HANDHELD_CLOSES_ON_LIFT`
-* the sketch with the MTP lib only works with the latest Teensyduino 1.57 version, so please update your Arduino IDE AND your Teensyduino to Arduino version 1.8.19 and the latest Teensyduino version 1.57
-* download the following library and put it into your local Arduino folder: https://github.com/KurtE/MTP_Teensy
+* the sketch only works with the latest Teensyduino 1.57 version, so please update your Arduino IDE AND your Teensyduino to Arduino version 1.8.19 and the latest Teensyduino version 1.57
+* download the following library, unzip it and put it into your local Arduino folder (on my computer, the local Arduino folder is: "C:/Users/DD4WH/Documents/Arduino/libraries/"): https://github.com/KurtE/MTP_Teensy
 * compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz" (this can save about 70% of battery power)
 
 Do not forget that your greeting message has to be recorded as a wav file with a sample rate of 44.1ksps, otherwise it is not played by the Teensy audio library
