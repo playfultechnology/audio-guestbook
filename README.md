@@ -24,6 +24,7 @@ AUDIO BOARD end of the cable
 **COMPILING the code:**
 * determine, whether your telephone closes contact or opens contact when you lift the handheld (use a voltmeter)
 * if your handheld contact/switch OPENS when you lift the handheld, comment out the following line in the sketch as follows: 
+* 
 `//#define HANDHELD_CLOSES_ON_LIFT` 
 * if your handheld contact/switch CLOSES when you lift the handheld, do not modify that line :-)
 
