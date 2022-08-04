@@ -24,7 +24,9 @@ AUDIO BOARD end of the cable
 COMPILING the code:
 * the sketch with the MTP lib only works with the latest Teensyduino 1.57 version, so please update your Arduino IDE AND your Teensyduino to Arduino version 1.8.19 and the latest Teensyduino version 1.57
 * download the following library and put it into your local Arduino folder: https://github.com/KurtE/MTP_Teensy
-* compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz"
+* compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz" (this can save about 70% of battery power)
+
+Do not forget that your greeting message has to be recorded as a wav file with a sample rate of 44.1ksps, otherwise it is not played by the Teensy audio library
 
 
 **Modifications by DD4WH, August 1st, 2022:**
@@ -34,8 +36,6 @@ COMPILING the code:
 * playback only plays the very last recorded file, not ALL the files ever recorded
 * does not play the greeting message again when you want to listen to your recordings
 * some bugfixes and warnings eliminated
-* do not forget that your greeting message has to be recorded as a wav with a sample rate of 44.1ksps, otherwise it is not played
-* compile the code with CPU speed 150MHz, this can save a lot of battery power (reduction by about 70%)
 
 **DD4WH hardware:**
 * telephone model "POST FeTAp 611-2a", built about 1972
