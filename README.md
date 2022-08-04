@@ -56,9 +56,6 @@ Do not forget that your greeting message has to be recorded as a wav file with a
 * shielded microphone cable
 
 
-![](https://github.com/DD4WH/audio-guestbook/blob/main/DD4WH_Audio_guest_book_611.jpg)
-
-
 ![](https://github.com/playfultechnology/audio-guestbook/raw/main/thumbnail.jpg)
 
 ![](https://raw.githubusercontent.com/playfultechnology/audio-guestbook/main/AudioGuestbook_bb.jpg)
