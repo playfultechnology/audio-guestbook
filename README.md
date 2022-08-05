@@ -1,7 +1,11 @@
-# audio-guestbook
+# audio-guestbook by Alastair of playfultechnology
 The audio guestbook is a converted telephone handset that guests can use to leave recorded messages at weddings, parties and other events, as sold by companies such as "After the Tone", "Fête Fone", "Life on Record", "At the Beep", and others.
 
 Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
+
+![grafik](https://user-images.githubusercontent.com/14326464/183045245-b6572d3d-1c0b-4fd0-9152-df6e01e44755.png)
+Nordfern W61 Fernsprech-Tischapparat, German Democratic Republic, built 1962
+Luckily, the handheld switch was in good condition and also the white pushbutton could be used without problems.
 
 **Some additional hints on building this audio guestbook (DD4WH, August 4th, 2022)**
 
