@@ -4,7 +4,7 @@ The audio guestbook is a converted telephone handset that guests can use to leav
 Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
 
 ![grafik](https://user-images.githubusercontent.com/14326464/183045245-b6572d3d-1c0b-4fd0-9152-df6e01e44755.png)
-Nordfern W61 Fernsprech-Tischapparat, German Democratic Republic, built 1962, case made of duroplast Bakelit. Luckily, the handheld switch was in good condition and also the white pushbutton could be used without problems.
+**Nordfern W61 Fernsprech-Tischapparat**, German Democratic Republic, built 1962, case made of duroplast Bakelit. Luckily, the handheld switch was in good condition and also the white pushbutton could be used without problems.
 
 **Some additional hints on building this audio guestbook (DD4WH, August 4th, 2022)**
 
@@ -25,7 +25,8 @@ AUDIO BOARD end of the cable
 --> if you follow these steps EXACTLY, hum and other noise could be minimized
 
 ![grafik](https://user-images.githubusercontent.com/14326464/182857070-9d98190a-44d2-4ce2-9e2f-b01b3b82eaa5.png)
-Deutsche Bundespost FeTAp 611-2a, Federal Republic of Germany, built ca. 1972. Handheld switch is encapsulated to protect it from dust, so this switch is in perfect working condition. Red button switch added. 
+
+**Deutsche Bundespost FeTAp 611-2a**, Federal Republic of Germany, built ca. 1972. Handheld switch is encapsulated to protect it from dust, so this switch is in perfect working condition. Red button switch added. 
 
 
 **COMPILING the code:**
