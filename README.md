@@ -65,3 +65,14 @@ Do not forget that your greeting message has to be recorded as a wav file with a
 ![](https://github.com/playfultechnology/audio-guestbook/raw/main/thumbnail.jpg)
 
 ![](https://raw.githubusercontent.com/playfultechnology/audio-guestbook/main/AudioGuestbook_bb.jpg)
+
+![grafik](https://user-images.githubusercontent.com/14326464/183258995-795e95d2-49ab-4112-8336-a490b0df10f7.png)
+Industriewandfernsprecher IFT/W, VEB Apparatebau Caputh, German Democratic Republic, built about 1980 ?
+
+![grafik](https://user-images.githubusercontent.com/14326464/183259028-9f9f51e8-5410-4730-9e2b-ce33327b757d.png)
+Tesla 3FP12088 built 1970 in former Czechoslovakia
+
+
+
+
+
