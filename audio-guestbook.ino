@@ -8,7 +8,7 @@
  * Then, recording starts, and continues until the handset is replaced.
  * Playback button allows all messages currently saved on SD card through earpiece 
  * 
- * follow these instructions:
+ * follow the detailed instructions here:
  * https://github.com/DD4WH/audio-guestbook/blob/main/README.md
  * 
  * 
@@ -16,12 +16,16 @@
  *   download the following library, unzip it and put it into your local Arduino folder (on my computer, the local Arduino folder is: "C:/Users/DD4WH/Documents/Arduino/libraries/"): https://github.com/KurtE/MTP_Teensy
  *   compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz" (this can save about 70% of battery power)
  *
+ * Modifications by Frank DD4WH, August 2022
+ * - now uses a Teensy 4.1 with built-in SD card (faster via SDIO), if you want to use a Teensy 4.0, uncomment the MOSI and SCK definitions in setup
+ * - Files are saved on SD card as 44.1kHz, 16-bit mono WAV audio files 
+ * - if you plug in the telephones´ USB cable into your computer, the telephone is mounted as a drive and you can acess the recordings 
+ * - if there is no "greeting.wav" message on the SD card, the telephone automatically plays an invitation to record this message and then you can
+ *   record the greeting message 
+ * - if you want to record the greeting message again, just delete it from the telephone and lift the handheld again to record the greeting message  
  * 
- * Files are saved on SD card as 44.1kHz, 16-bit, mono signed integer RAW audio format 
- * --> changed this to WAV recording, DD4WH 2022_07_31
- * --> added MTP support, which enables copying WAV files from the SD card via the USB connection, DD4WH 2022_08_01
- * --> if your handheld contact switch opens on lifting, uncomment the #define line below
  * 
+ * --> if your handheld contact switch opens on lifting, simply uncomment the #define line below, everything else is done by the software
  * 
  * GNU GPL v3.0 license
  * 
@@ -37,16 +41,23 @@
 
 // DEFINES
 // Define pins used by Teensy Audio Shield
-#define SDCARD_CS_PIN    10
+//#define SDCARD_CS_PIN    10
+#define SDCARD_CS_PIN    BUILTIN_SDCARD
 #define SDCARD_MOSI_PIN  7
 #define SDCARD_SCK_PIN   14
 // And those used for inputs
-#define HOOK_PIN 0
-#define PLAYBACK_BUTTON_PIN 1
+#define HOOK_PIN 40
+#define PLAYBACK_BUTTON_PIN 41
+//#define HOOK_PIN 0
+//#define PLAYBACK_BUTTON_PIN 1
 
 // comment his out, if your handheld OPENS the contact on lift
 // use a digital voltmeter to find out
 #define HANDHELD_CLOSES_ON_LIFT
+
+// comment this out, if you want to record your greeting message with an external recorder
+// leave as-is if you want to have the telephone automatically switch to recording the greeting message, in case there is no "greeting.wav" on the SD card 
+#define AUTO_GREETING_MESSAGE
 
 // GLOBALS
 // Audio initialisation code can be generated using the GUI interface at https://www.pjrc.com/teensy/gui/
@@ -74,7 +85,7 @@ Bounce buttonRecord = Bounce(HOOK_PIN, 40);
 Bounce buttonPlay = Bounce(PLAYBACK_BUTTON_PIN, 40);
 
 // Keep track of current state of the device
-enum Mode {Initialising, Ready, Prompting, Recording, Playing};
+enum Mode {Initialising, Ready, Prompting, Recording, Playing, Recording_Greeting};
 Mode mode = Mode::Initialising;
 
 float beep_volume = 0.04f; // not too loud :-)
@@ -114,8 +125,8 @@ void setup() {
   sgtl5000_1.enable();
   // Define which input on the audio shield to use (AUDIO_INPUT_LINEIN / AUDIO_INPUT_MIC)
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
-  //sgtl5000_1.adcHighPassFilterDisable(); //
-  sgtl5000_1.volume(0.95);
+  sgtl5000_1.adcHighPassFilterDisable(); //
+  sgtl5000_1.volume(0.85);
 
   mixer.gain(0, 1.0f);
   mixer.gain(1, 1.0f);
@@ -127,9 +138,10 @@ void setup() {
   delay(1000);
 
   // Initialize the SD card
-  SPI.setMOSI(SDCARD_MOSI_PIN);
-  SPI.setSCK(SDCARD_SCK_PIN);
+  //SPI.setMOSI(SDCARD_MOSI_PIN);
+  //SPI.setSCK(SDCARD_SCK_PIN);
   if (!(SD.begin(SDCARD_CS_PIN))) 
+//  if (!(SD.begin(BUILTIN_SDCARD))) 
   {
     // stop here if no SD card, but print a message
     while (1) {
@@ -143,13 +155,12 @@ void setup() {
     MTP.begin();
 
   // Add SD Card
-//    MTP.addFilesystem(SD, "SD Card");
-    MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
+    MTP.addFilesystem(SD, "Gruenkohls Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
     Serial.println("Added SD card via MTP");
     
     // Value in dB
 //  sgtl5000_1.micGain(15);
-  sgtl5000_1.micGain(5); // much lower gain is required for the AOM5024 electret capsule
+  sgtl5000_1.micGain(8); // much lower gain is required for the AOM5024 electret capsule
 
   // Synchronise the Time object used in the program code with the RTC time provider.
   // See https://github.com/PaulStoffregen/Time
@@ -162,58 +173,74 @@ void setup() {
   mode = Mode::Ready; print_mode();
 }
 
-void loop() {
+void loop() { //1
   // First, read the buttons
   buttonRecord.update();
   buttonPlay.update();
 
-  switch(mode){
+  switch(mode)
+  { //2
     case Mode::Ready:
       // Falling edge occurs when the handset is lifted --> 611 telephone
-#ifdef HANDHELD_CLOSES_ON_LIFT
-      if (buttonRecord.fallingEdge()) {
+#if defined(HANDHELD_CLOSES_ON_LIFT)
+      if (buttonRecord.fallingEdge()) 
 #else
-      if (buttonRecord.risingEdge()) {
+      if (buttonRecord.risingEdge()) 
 #endif
-      Serial.println("Handset lifted");
+      {
+        Serial.println("Handset lifted");
         mode = Mode::Prompting; print_mode();
-      }
-      else if(buttonPlay.fallingEdge()) {
+      } //3
+      else if(buttonPlay.fallingEdge()) 
+      { //4
         //playAllRecordings();
         playLastRecording();
-      }
+      } //4
       break;
 
     case Mode::Prompting:
       // Wait a second for users to put the handset to their ear
       wait(1000);
+
+#if defined(AUTO_GREETING_MESSAGE)
+
+    if (!SD.exists("greeting.wav")) 
+    { //5
+      mode = Mode::Recording_Greeting;
+      break;
+    } //5
+#endif
+     
       // Play the greeting inviting them to record their message
       playWav1.play("greeting.wav");    
       // Wait until the  message has finished playing
 //      while (playWav1.isPlaying()) {
-      while (!playWav1.isStopped()) {
+      while (!playWav1.isStopped()) 
+      { //6
         // Check whether the handset is replaced
         buttonRecord.update();
         buttonPlay.update();
         // Handset is replaced
-//        if(buttonRecord.risingEdge()) {
-#ifdef HANDHELD_CLOSES_ON_LIFT
-      if (buttonRecord.risingEdge()) {
+#if defined(HANDHELD_CLOSES_ON_LIFT)
+      if (buttonRecord.risingEdge()) 
 #else
-      if (buttonRecord.fallingEdge()) {
+      if (buttonRecord.fallingEdge())
 #endif
+        {
           playWav1.stop();
           mode = Mode::Ready; print_mode();
           return;
-        }
-        if(buttonPlay.fallingEdge()) {
+        } //7
+        if(buttonPlay.fallingEdge()) 
+        { //8
           playWav1.stop();
           //playAllRecordings();
           playLastRecording();
           return;
-        }
+        } //8
         
-      }
+      }  // 
+      
       // Debug message
       Serial.println("Starting Recording");
       // Play the tone sound effect
@@ -226,22 +253,23 @@ void loop() {
 
     case Mode::Recording:
       // Handset is replaced
-//      if(buttonRecord.risingEdge()){
-#ifdef HANDHELD_CLOSES_ON_LIFT
-      if (buttonRecord.risingEdge()) {
+#if defined(HANDHELD_CLOSES_ON_LIFT)
+      if (buttonRecord.risingEdge()) 
 #else
-      if (buttonRecord.fallingEdge()) {
+      if (buttonRecord.fallingEdge())
 #endif
-        // Debug log
+      { //9  
+      // Debug log
         Serial.println("Stopping Recording");
         // Stop recording
         stopRecording();
         // Play audio tone to confirm recording has ended
         end_Beep();
-      }
-      else {
+      } //9
+      else 
+      { //10
         continueRecording();
-      }
+      } // 10
       break;
 
     case Mode::Playing: // to make compiler happy
@@ -249,8 +277,49 @@ void loop() {
 
     case Mode::Initialising: // to make compiler happy
       break;  
-  }   
+
+    case Mode::Recording_Greeting: // to make compiler happy
+      startRecordingGreeting();
+      mode = Mode::Recording;
+      break;  
+      } // 2 end switch   
   MTP.loop();  //This is mandatory to be placed in the loop code.
+} // 1 end loop
+
+void startRecordingGreeting() {
+    if (SD.exists("greeting.wav")) {
+      return;
+    }
+    // play message "Please record Greeting message now !" 
+    playWav1.play("invitation_greeting.wav");
+    while (!playWav1.isStopped()) { // this works for playWav
+      buttonPlay.update();
+      buttonRecord.update();
+      // Button is pressed again
+#if defined(HANDHELD_CLOSES_ON_LIFT)
+      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge())  
+#else
+      if(buttonPlay.fallingEdge() || buttonRecord.fallingEdge())  
+#endif
+      { 
+        playWav1.stop();
+        mode = Mode::Ready; print_mode();
+        return;
+      }   
+    }
+    // play beep
+    two_tone_Beep();
+  frec = SD.open("greeting.wav", FILE_WRITE);
+  Serial.println("Opened Greeting file !");
+  if(frec) {
+    Serial.print("Recording to greeting.wav");
+    queue1.begin();
+    mode = Mode::Recording; print_mode();
+    recByteSaved = 0L;
+  }
+  else {
+    Serial.println("Couldn't open file to record!");
+  }
 }
 
 void startRecording() {
@@ -352,13 +421,12 @@ void playAllRecordings() {
       buttonPlay.update();
       buttonRecord.update();
       // Button is pressed again
-//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
-#ifdef HANDHELD_CLOSES_ON_LIFT
-      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { 
+#if defined(HANDHELD_CLOSES_ON_LIFT)
+      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge())  
 #else
-      if(buttonPlay.fallingEdge() || buttonRecord.fallingEdge()) { 
+      if(buttonPlay.fallingEdge() || buttonRecord.fallingEdge())  
 #endif
-//      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { 
+      { 
         playWav1.stop();
         mode = Mode::Ready; print_mode();
         return;
@@ -369,43 +437,43 @@ void playAllRecordings() {
   mode = Mode::Ready; print_mode();
 }
 
-void playLastRecording() {
+void playLastRecording() { // 1
   // Find the first available file number
   uint16_t idx = 0; 
-  for (uint16_t i=0; i<9999; i++) {
+  for (uint16_t i=0; i<9999; i++) { // 2
     // Format the counter as a five-digit number with leading zeroes, followed by file extension
     snprintf(filename, 11, " %05d.wav", i);
     // check, if file with index i exists
-    if (!SD.exists(filename)) {
+    if (!SD.exists(filename)) { // 3
      idx = i - 1;
      break;
-      }
-  }
+      } // 3
+  } // 2
       // now play file with index idx == last recorded file
       snprintf(filename, 11, " %05d.wav", idx);
       Serial.println(filename);
       playWav1.play(filename);
       mode = Mode::Playing; print_mode();
-      while (!playWav1.isStopped()) { // this works for playWav
-      buttonPlay.update();
-      buttonRecord.update();
-      // Button is pressed again
-//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
-//      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
-#ifdef HANDHELD_CLOSES_ON_LIFT
-      if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { 
-#else
-      if(buttonPlay.fallingEdge() || buttonRecord.fallingEdge()) { 
-#endif
-        playWav1.stop();
-        mode = Mode::Ready; print_mode();
-        return;
-      }   
-    }
+      while (!playWav1.isStopped()) 
+      { // 5 // this works for playWav
+          buttonPlay.update();
+          buttonRecord.update();
+          // Button is pressed again
+    #if defined(HANDHELD_CLOSES_ON_LIFT)
+          if(buttonPlay.fallingEdge() || buttonRecord.risingEdge())  
+    #else
+          if(buttonPlay.fallingEdge() || buttonRecord.fallingEdge()) 
+    #endif
+          {
+            playWav1.stop();
+            mode = Mode::Ready; print_mode();
+            return;
+          }   //4
+      } // 5 end while
       // file has been played
   mode = Mode::Ready; print_mode();  
   end_Beep();
-}
+} // 1 end playLastRecording
 
 
 // Retrieve the current time from Teensy built-in RTC
@@ -497,7 +565,7 @@ void writeOutHeader() { // update WAV header with final filesize/datasize
 }
 
 void end_Beep(void) {
-          waveform1.frequency(523.25);
+        waveform1.frequency(523.25);
         waveform1.amplitude(beep_volume);
         wait(250);
         waveform1.amplitude(0);
@@ -515,6 +583,28 @@ void end_Beep(void) {
         waveform1.amplitude(0);
 }
 
+void two_tone_Beep(void) {
+        waveform1.frequency(523.25);
+        waveform1.amplitude(beep_volume);
+        wait(250);
+        waveform1.amplitude(0);
+        waveform1.frequency(375.0);
+        wait(250);
+        waveform1.amplitude(beep_volume);
+        wait(250);
+        waveform1.amplitude(0);
+        waveform1.frequency(523.25);
+        wait(250);
+        waveform1.amplitude(beep_volume);
+        wait(250);
+        waveform1.amplitude(0);
+        waveform1.frequency(375.0);
+        wait(250);
+        waveform1.amplitude(beep_volume);
+        wait(250);
+        waveform1.amplitude(0);
+}
+
 void print_mode(void) { // only for debugging
   Serial.print("Mode switched to: ");
   // Initialising, Ready, Prompting, Recording, Playing
@@ -523,5 +613,6 @@ void print_mode(void) { // only for debugging
   else if(mode == Mode::Recording)  Serial.println(" Recording");
   else if(mode == Mode::Playing)    Serial.println(" Playing");
   else if(mode == Mode::Initialising)  Serial.println(" Initialising");
+  else if(mode == Mode::Recording_Greeting)  Serial.println(" Recording Greeting");
   else Serial.println(" Undefined");
 }
