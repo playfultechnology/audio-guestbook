@@ -41,13 +41,14 @@ AUDIO BOARD end of the cable
 * download the following library, unzip it and put it into your local Arduino folder (on my computer, the local Arduino folder is: "C:/Users/DD4WH/Documents/Arduino/libraries/"): https://github.com/KurtE/MTP_Teensy
 * compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz" (this can save about 70% of battery power)
 
-Do not forget that your greeting message has to be recorded as a wav file with a sample rate of 44.1ksps, otherwise it is not played by the Teensy audio library
+The greeting message is now recorded on the telephone itself. If there is no greeting message on the SD card (which you will see, if you plug the phone into your computer), you will hear a two-tone-beep and after that you can record the greeting message, which will from then on be played whenever you lift the handheld. If you want to change an existing greeting message, just rename the greeting to something like "greeting_old.wav" or just delete it. After that, the telephone will again play the two-tone beep and you can record your greeting message again. 
 
 
-**Modifications by DD4WH, August 1st, 2022:**
+**Modifications by DD4WH, August 15th, 2022:**
 * recordings are now saved as WAV files
 * recordings on the SD card can be accessed via USB, no more need to take out the SD card
-* code modifications for a telephone with closing contact as the handheld is being lifted
+* possibility to record the greeting message on the telephone itself
+* easy-to-use compile switch to account for telephone with closing or opening contact as the handheld is being lifted
 * playback only plays the very last recorded file, not ALL the files ever recorded
 * does not play the greeting message again when you want to listen to your recordings
 * some bugfixes and warnings eliminated
