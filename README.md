@@ -35,12 +35,12 @@ AUDIO BOARD end of the cable
 * before compiling, please have a look at the USER CONFIGURATION part at the top of the sketch:
 * the user can configure three pre-compile settings by simply uncommenting/commenting #defines in the sketch:
 
-1.) does your handheld OPEN or CLOSE the switch when you lift the handheld ? Use a voltmeter to find out !
+1.) **does your handheld OPEN or CLOSE the switch** when you lift the handheld ? Use a voltmeter to find out !
 
-2.) do you want the telephone to be able to record the greeting message automatically, if there is no "greeting.wav" present on the SD card ?
+2.) **do you want the telephone to be able to record the greeting message automatically**, if there is no "greeting.wav" present on the SD card ?
 The greeting message is now recorded on the telephone itself. If there is no greeting message on the SD card (which you will see, if you plug the phone into your computer), you will hear a two-tone-beep and after that you can record the greeting message, which will from then on be played whenever you lift the handheld. If you want to change an existing greeting message, just rename the greeting to something like "greeting_old.wav" or just delete it. After that, the telephone will again play the two-tone beep and you can record your greeting message again.
 
-3.) do you use Teensy 4.0 (SD card slot of the audio board) or do you use Teensy 4.1 (SD card slot of the Teensy 4.1) ?  
+3.) **do you use Teensy 4.0 (SD card slot of the audio board) or do you use Teensy 4.1 (SD card slot of the Teensy 4.1) ?**  
 
 * uncomment/comment those three Configuration Defines according to your preferences. 
 * compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz" (this can save about 70% of battery power)
