@@ -17,15 +17,12 @@
  *   compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz" (this can save about 70% of battery power)
  *
  * Modifications by Frank DD4WH, August 2022
- * - now uses a Teensy 4.1 with built-in SD card (faster via SDIO), if you want to use a Teensy 4.0, uncomment the MOSI and SCK definitions in setup
+ * - now uses a Teensy 4.1 with built-in SD card (faster via SDIO), if you want to use a Teensy 4.0, uncomment in the USER CONFIGURATION below
  * - Files are saved on SD card as 44.1kHz, 16-bit mono WAV audio files 
  * - if you plug in the telephones´ USB cable into your computer, the telephone is mounted as a drive and you can acess the recordings 
- * - if there is no "greeting.wav" message on the SD card, the telephone automatically plays an invitation to record this message and then you can
- *   record the greeting message 
+ * - if there is no "greeting.wav" message on the SD card, the telephone automatically plays an invitation to record this message and then you can record the greeting message 
  * - if you want to record the greeting message again, just delete it from the telephone and lift the handheld again to record the greeting message  
- * 
- * 
- * --> if your handheld contact switch opens on lifting, simply uncomment the #define line below, everything else is done by the software
+ * --> if your handheld contact switch opens on lifting, simply uncomment in the USER CONFIGURATION below, everything else is done by the software
  * 
  * GNU GPL v3.0 license
  * 
@@ -37,27 +34,46 @@
 #include <SPI.h>
 #include <SD.h>
 #include <TimeLib.h>
-#include <MTP_Teensy.h>
+#include <MTP_Teensy.h>  // this library has to be downloaded separately (https://github.com/KurtE/MTP_Teensy)
+// unzip the downloaded file and its content into your local Arduino folder (on my computer, the local Arduino folder is: "C:/Users/DD4WH/Documents/Arduino/libraries/")
 
-// DEFINES
-// Define pins used by Teensy Audio Shield
-//#define SDCARD_CS_PIN    10
-#define SDCARD_CS_PIN    BUILTIN_SDCARD
-#define SDCARD_MOSI_PIN  7
-#define SDCARD_SCK_PIN   14
-// And those used for inputs
-#define HOOK_PIN 40
-#define PLAYBACK_BUTTON_PIN 41
-//#define HOOK_PIN 0
-//#define PLAYBACK_BUTTON_PIN 1
+/***************************************************************************************************************************************************/
+/**USER CONFIGURATION ******************************************************************************************************************************/
+/**COMMENT / UNCOMMENT ACCORDING TO YOUR HARDWARE **************************************************************************************************/
+/***************************************************************************************************************************************************/
 
-// comment his out, if your handheld OPENS the contact on lift
+// comment this out, if your handheld OPENS the contact on lift
 // use a digital voltmeter to find out
 #define HANDHELD_CLOSES_ON_LIFT
 
 // comment this out, if you want to record your greeting message with an external recorder
 // leave as-is if you want to have the telephone automatically switch to recording the greeting message, in case there is no "greeting.wav" on the SD card 
 #define AUTO_GREETING_MESSAGE
+
+// comment out, if you use a Teensy 4.0 (and thus the SD card slot on the audio board)
+// if you leave this as-is, you have to use the built-in SD card slot on the Teensy 4.1, NOT the SD card slot on the audio board 
+#define TEENSY_41
+
+/***************************************************************************************************************************************************/
+/**END OF USER CONFIGURATION ***********************************************************************************************************************/
+/***************************************************************************************************************************************************/
+/***************************************************************************************************************************************************/
+
+// Define pins used by Teensy Audio Shield
+#ifdef TEENSY_41
+#define SDCARD_CS_PIN    BUILTIN_SDCARD
+#else
+#define SDCARD_CS_PIN    10
+#endif
+#define SDCARD_MOSI_PIN  7
+#define SDCARD_SCK_PIN   14
+// And those used for inputs
+// You can choose the pins you use here:
+#define HOOK_PIN 40
+#define PLAYBACK_BUTTON_PIN 41
+//#define HOOK_PIN 0              // this is the default
+//#define PLAYBACK_BUTTON_PIN 1   // this is the default
+
 
 // GLOBALS
 // Audio initialisation code can be generated using the GUI interface at https://www.pjrc.com/teensy/gui/
@@ -138,10 +154,11 @@ void setup() {
   delay(1000);
 
   // Initialize the SD card
-  //SPI.setMOSI(SDCARD_MOSI_PIN);
-  //SPI.setSCK(SDCARD_SCK_PIN);
+#ifndef TEENSY_41   // assumes that you are using the SD card slot of the AUDIO BOARD
+  SPI.setMOSI(SDCARD_MOSI_PIN);
+  SPI.setSCK(SDCARD_SCK_PIN);
+#endif  
   if (!(SD.begin(SDCARD_CS_PIN))) 
-//  if (!(SD.begin(BUILTIN_SDCARD))) 
   {
     // stop here if no SD card, but print a message
     while (1) {
