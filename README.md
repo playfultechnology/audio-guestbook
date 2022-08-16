@@ -30,6 +30,8 @@ AUDIO BOARD end of the cable
 
 
 **COMPILING the code:**
+* the sketch only works with the latest Teensyduino 1.57 version, so please update your Arduino IDE AND your Teensyduino to Arduino version 1.8.19 and the latest Teensyduino version 1.57
+* download the following library, unzip it and put it into your local Arduino folder (on my computer, the local Arduino folder is: "C:/Users/DD4WH/Documents/Arduino/libraries/"): https://github.com/KurtE/MTP_Teensy
 * before compiling, please have a look at the USER CONFIGURATION part at the top of the sketch:
 * the user can configure three pre-compile settings by simply uncommenting/commenting #defines in the sketch:
 
@@ -41,8 +43,6 @@ The greeting message is now recorded on the telephone itself. If there is no gre
 3.) do you use Teensy 4.0 (SD card slot of the audio board) or do you use Teensy 4.1 (SD card slot of the Teensy 4.1) ?  
 
 * uncomment/comment those three Configuration Defines according to your preferences. 
-* the sketch only works with the latest Teensyduino 1.57 version, so please update your Arduino IDE AND your Teensyduino to Arduino version 1.8.19 and the latest Teensyduino version 1.57
-* download the following library, unzip it and put it into your local Arduino folder (on my computer, the local Arduino folder is: "C:/Users/DD4WH/Documents/Arduino/libraries/"): https://github.com/KurtE/MTP_Teensy
 * compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz" (this can save about 70% of battery power)
 
 
