@@ -4,7 +4,7 @@ The audio guestbook is a converted telephone handset that guests can use to leav
 This video is a little outdated, because there have been many updates of the code, but it gives you a general idea of what to expect.
 Watch the tutorial here: https://youtu.be/dI6ielrP1SE
 
-After building the hardware, follow exactly the steps specified below in the section **Compiling the code**
+After watching the video, follow the hints on building the hardware. After that, follow exactly the steps specified below in the section **Compiling the code** for the software.
 
 ![grafik](https://user-images.githubusercontent.com/14326464/183045245-b6572d3d-1c0b-4fd0-9152-df6e01e44755.png)
 **Nordfern W61 Fernsprech-Tischapparat**, German Democratic Republic, built 1962, case made of duroplast Bakelit. Luckily, the handheld switch was in good condition and also the white pushbutton could be used without problems. Built-in mic capsule discarded, using AOM-5024 electret instead.
