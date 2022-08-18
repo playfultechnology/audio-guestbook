@@ -9,6 +9,9 @@ After watching the video, follow the hints on building the hardware. After that,
 ![grafik](https://user-images.githubusercontent.com/14326464/183045245-b6572d3d-1c0b-4fd0-9152-df6e01e44755.png)
 **Nordfern W61 Fernsprech-Tischapparat**, German Democratic Republic, built 1962, case made of duroplast Bakelit. Luckily, the handheld switch was in good condition and also the white pushbutton could be used without problems. Built-in mic capsule discarded, using AOM-5024 electret instead.
 
+**Hardware components needed**
+![grafik](https://user-images.githubusercontent.com/14326464/185438968-089aa193-a7b7-4821-80b2-a807134b412b.png)
+
 **Follow these hardware hints on building the audio guestbook (DD4WH, August 4th, 2022)**
 
 * Best connection of the Teensy and audio board is through headers. Do not use cables for that connection, the connections have to be as short as possible.
