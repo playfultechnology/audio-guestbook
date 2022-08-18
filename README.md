@@ -1,12 +1,14 @@
 # audio-guestbook by Alastair of playfultechnology
 The audio guestbook is a converted telephone handset that guests can use to leave recorded messages at weddings, parties and other events, as sold by companies such as "After the Tone", "Fête Fone", "Life on Record", "At the Beep", and others.
 
-Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
+This video is a little outdated, because there have been many updates of the code, but it gives you a general idea of what to expect.
+Watch the tutorial here: https://youtu.be/dI6ielrP1SE
+After building the hardware, follow exactly the steps specified below in the section **Compiling the code**
 
 ![grafik](https://user-images.githubusercontent.com/14326464/183045245-b6572d3d-1c0b-4fd0-9152-df6e01e44755.png)
 **Nordfern W61 Fernsprech-Tischapparat**, German Democratic Republic, built 1962, case made of duroplast Bakelit. Luckily, the handheld switch was in good condition and also the white pushbutton could be used without problems. Built-in mic capsule discarded, using AOM-5024 electret instead.
 
-**Some additional hints on building this audio guestbook (DD4WH, August 4th, 2022)**
+**Follow these hardware hints on building the audio guestbook (DD4WH, August 4th, 2022)**
 
 * Best connection of the Teensy and audio board is through headers. Do not use cables for that connection, the connections have to be as short as possible.
 * for the button connections every wire quality is OK !
