@@ -1,6 +1,8 @@
 # audio-guestbook by Alastair of playfultechnology
 **Modified by Frank, DD4WH**
 
+*If you do not have a good soldering iron and a fine solder tip or if you have never soldered, I would recommend NOT to try to build this, but to start with a less complex project!*
+
 The audio guestbook is a converted telephone handset that guests can use to leave recorded messages at weddings, parties and other events, as sold by companies such as "After the Tone", "Fête Fone", "Life on Record", "At the Beep", and others.
 
 This video is a little outdated, because there have been many updates of the code, but it gives you a general idea of what to expect.
@@ -16,7 +18,6 @@ Teensy 4.1, Teensy audio board for T4, microphone electret capsule AOM5024 or EM
 
 
 ![grafik](https://user-images.githubusercontent.com/14326464/185438968-089aa193-a7b7-4821-80b2-a807134b412b.png)
-If you do not have a good soldering iron and a fine solder tip or if you have never soldered, I would recommend NOT to try to build this, but to start with a less complex project!
 
 
 **Follow these hardware hints on building the audio guestbook (DD4WH, August 4th, 2022)**
