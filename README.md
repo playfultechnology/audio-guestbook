@@ -1,4 +1,6 @@
 # audio-guestbook by Alastair of playfultechnology
+**Modified by Frank, DD4WH**
+
 The audio guestbook is a converted telephone handset that guests can use to leave recorded messages at weddings, parties and other events, as sold by companies such as "After the Tone", "Fête Fone", "Life on Record", "At the Beep", and others.
 
 This video is a little outdated, because there have been many updates of the code, but it gives you a general idea of what to expect.
