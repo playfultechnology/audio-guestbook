@@ -16,6 +16,8 @@ Teensy 4.1, Teensy audio board for T4, microphone electret capsule AOM5024 or EM
 
 
 ![grafik](https://user-images.githubusercontent.com/14326464/185438968-089aa193-a7b7-4821-80b2-a807134b412b.png)
+If you do not have a good soldering iron and a fine solder tip or if you have never soldered, I would recommend NOT to try to build this, but to start with a less complex project!
+
 
 **Follow these hardware hints on building the audio guestbook (DD4WH, August 4th, 2022)**
 
