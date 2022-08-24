@@ -17,6 +17,8 @@ After watching the video, follow the hints on building the hardware. After that,
 * Best connection of the Teensy and audio board is through headers. Do not use cables for that connection, the connections have to be as short as possible.
 * for the button connections every wire quality is OK !
 
+![grafik](https://user-images.githubusercontent.com/14326464/186416650-6ada6bdc-8253-4c69-b8b3-c3f23034469c.png)
+
 AUDIO Quality / microphone:
 * if you use a new electret microphone capsule (and not the original telephone mic capsule), I recommend to use a separate shielded mic cable and NOT the original cable (which -in most cases- will have no shielding at all). The shielded cable will have a shield and two internal wires (most often red and white wire) and should be soldered like this.
 
@@ -29,6 +31,13 @@ AUDIO BOARD end of the cable
 * solder the red cable to the "MIC" connector on the audio board
 * solder the shield to the white cable (YES, exactly) and solder the common connection to the GND connection of the audio board
 --> if you follow these steps EXACTLY, hum and other noise could be minimized
+
+SPEAKER CONNECTION
+* you can use a 3.5mm audio plug and plug it into the earphone output of the audio board and solder the two wires to the wires that connect to the speaker of the handheld
+* Alternatively you can solder the two wires to the very very small solder blobs under the 3.5mm plug --> ONLY DO THIS IF YOU HAVE EXPERIENCE WITH SOLDERING, NEVER CONNECT THE VGND (VIRTUAL GROUND) TO THE GND CONNECTIONS ! 
+
+![grafik](https://user-images.githubusercontent.com/14326464/186417481-37bbabca-690e-4548-bf38-5cda4aa3644b.png)
+
 
 ![grafik](https://user-images.githubusercontent.com/14326464/182857070-9d98190a-44d2-4ce2-9e2f-b01b3b82eaa5.png)
 
