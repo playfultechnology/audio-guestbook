@@ -12,6 +12,9 @@ After watching the video, follow the hints on building the hardware. After that,
 **Nordfern W61 Fernsprech-Tischapparat**, German Democratic Republic, built 1962, case made of duroplast Bakelit. Luckily, the handheld switch was in good condition and also the white pushbutton could be used without problems. Built-in mic capsule discarded, using AOM-5024 electret instead.
 
 **Hardware components needed**
+Teensy 4.1, Teensy audio board for T4, microphone electret capsule AOM5024 or EM272, push button, male and female pin headers 2.54mm wide, micro-SD card, shielded microphone cable, and some simple wires
+
+
 ![grafik](https://user-images.githubusercontent.com/14326464/185438968-089aa193-a7b7-4821-80b2-a807134b412b.png)
 
 **Follow these hardware hints on building the audio guestbook (DD4WH, August 4th, 2022)**
