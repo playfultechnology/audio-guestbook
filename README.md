@@ -32,16 +32,15 @@ AUDIO BOARD end of the cable
 * solder the shield to the white cable (YES, exactly) and solder the common connection to the GND connection of the audio board
 --> if you follow these steps EXACTLY, hum and other noise could be minimized
 
+![grafik](https://user-images.githubusercontent.com/14326464/182857070-9d98190a-44d2-4ce2-9e2f-b01b3b82eaa5.png)
+
+**Deutsche Bundespost FeTAp 611-2a**, Federal Republic of Germany, built ca. 1972. Handheld switch is encapsulated to protect it from dust, so this switch is in perfect working condition. Red button switch added. Built-in mic capsule discarded, using AOM-5024 electret instead. 
+
 SPEAKER CONNECTION
 * you can use a 3.5mm audio plug and plug it into the earphone output of the audio board and solder the two wires to the wires that connect to the speaker of the handheld
 * Alternatively you can solder the two wires to the very very small solder blobs under the 3.5mm plug --> ONLY DO THIS IF YOU HAVE EXPERIENCE WITH SOLDERING, NEVER CONNECT THE VGND (VIRTUAL GROUND) TO THE GND CONNECTIONS ! 
 
 ![grafik](https://user-images.githubusercontent.com/14326464/186417481-37bbabca-690e-4548-bf38-5cda4aa3644b.png)
-
-
-![grafik](https://user-images.githubusercontent.com/14326464/182857070-9d98190a-44d2-4ce2-9e2f-b01b3b82eaa5.png)
-
-**Deutsche Bundespost FeTAp 611-2a**, Federal Republic of Germany, built ca. 1972. Handheld switch is encapsulated to protect it from dust, so this switch is in perfect working condition. Red button switch added. Built-in mic capsule discarded, using AOM-5024 electret instead. 
 
 
 **COMPILING the code:**
