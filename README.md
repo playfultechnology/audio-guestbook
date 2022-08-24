@@ -44,7 +44,7 @@ SPEAKER CONNECTION
 ![grafik](https://user-images.githubusercontent.com/14326464/186417481-37bbabca-690e-4548-bf38-5cda4aa3644b.png)
 
 
-**COMPILING the code:**
+**SOFTWARE: COMPILING the code:**
 * the sketch only works with the latest Teensyduino 1.57 version, so please update your Arduino IDE AND your Teensyduino to Arduino version 1.8.19 and the latest Teensyduino version 1.57
 * download the following library, unzip it and put it into your local Arduino folder (on my computer, the local Arduino folder is: "C:/Users/DD4WH/Documents/Arduino/libraries/"): https://github.com/KurtE/MTP_Teensy
 * before compiling, please have a look at the USER CONFIGURATION part at the top of the sketch:
