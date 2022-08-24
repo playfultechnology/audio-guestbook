@@ -38,7 +38,8 @@ AUDIO BOARD end of the cable
 
 SPEAKER CONNECTION
 * you can use a 3.5mm audio plug and plug it into the earphone output of the audio board and solder the two wires to the wires that connect to the speaker of the handheld
-* Alternatively you can solder the two wires to the very very small solder blobs under the 3.5mm plug --> ONLY DO THIS IF YOU HAVE EXPERIENCE WITH SOLDERING, NEVER CONNECT THE VGND (VIRTUAL GROUND) TO THE GND CONNECTIONS ! 
+* Alternatively, instead of using a 3.5mm plug, you can solder the two wires to the **very very small** solder blobs under the 3.5mm plug --> ONLY DO THIS IF YOU HAVE EXPERIENCE WITH SOLDERING
+* NEVER CONNECT THE VGND (VIRTUAL GROUND) TO THE GND CONNECTIONS ! 
 
 ![grafik](https://user-images.githubusercontent.com/14326464/186417481-37bbabca-690e-4548-bf38-5cda4aa3644b.png)
 
