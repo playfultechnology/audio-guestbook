@@ -25,6 +25,8 @@ For most audio projects, leave Audio tweaks set to `Normal`, as the audio librar
 ### Technical stuff
 As noted above, the tweaks work by increasing the number of audio samples in an "audio block" from 128 to 256. This means that audio updates run every 5.8ms rather than the standard 2.9ms, with the consequence that an SD write can take nearly 12ms before an update is "lost". It would be better to figure out how to prevent the SD card write from masking interrupts, but I'm clearly not quite smart enough...
 
+The audio library AudioPlaySdWav object is unfortunately one of those that doesn't work well with anything other than a standard 128-sample audio block. Therefore, a (renamed) copy which _does_ work properly is now included within the sketch folder, and used instead of the stock object.
+
 ---
 **Modifications by h4yn0nnym0u5e, October 27th 2022:**
 * modifications to improve recording reliability
