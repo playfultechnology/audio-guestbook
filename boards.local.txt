@@ -1,0 +1,15 @@
+# Copy these lines into your boards.local.txt, OR if you don't have one,
+# copy this whole file into the same folder as your boards.txt file.
+#
+# On a Windows system this will typically be in:
+#   C:\Program Files (x86)\Arduino\hardware\teensy\avr
+#
+menu.audiotune=Audio tweaks
+teensy41.menu.audiotune.normal=Normal
+teensy41.menu.audiotune.normal.build.flags.audio=-DAUDIO_BLOCK_SAMPLES=128
+teensy41.menu.audiotune.bigger=Bigger blocks (256 samples)
+teensy41.menu.audiotune.bigger.build.flags.audio=-DAUDIO_BLOCK_SAMPLES=256
+teensy40.menu.audiotune.normal=Normal
+teensy40.menu.audiotune.normal.build.flags.audio=-DAUDIO_BLOCK_SAMPLES=128
+teensy40.menu.audiotune.bigger=Bigger blocks (256 samples)
+teensy40.menu.audiotune.bigger.build.flags.audio=-DAUDIO_BLOCK_SAMPLES=256

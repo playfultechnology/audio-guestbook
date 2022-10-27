@@ -28,6 +28,7 @@
 #include <SD.h>
 #include <TimeLib.h>
 #include <MTP_Teensy.h>
+#include "play_sd_wav.h" // local copy with fixes
 
 // DEFINES
 // Define pins used by Teensy Audio Shield
@@ -43,7 +44,7 @@
 // Inputs
 AudioSynthWaveform          waveform1; // To create the "beep" sfx
 AudioInputI2S               i2s2; // I2S input from microphone on audio shield
-AudioPlaySdWav              playWav1; // Play 44.1kHz 16-bit PCM greeting WAV file
+AudioPlaySdWavX              playWav1; // Play 44.1kHz 16-bit PCM greeting WAV file
 AudioRecordQueue            queue1; // Creating an audio buffer in memory before saving to SD
 AudioMixer4                 mixer; // Allows merging several inputs to same output
 AudioOutputI2S              i2s1; // I2S interface to Speaker/Line Out on Audio shield
@@ -91,6 +92,7 @@ void setup() {
     // wait for serial port to connect.
   }
   Serial.println("Serial set up correctly");
+  Serial.printf("Audio block set to %d samples\n",AUDIO_BLOCK_SAMPLES);
   print_mode();
   // Configure the input pins
   pinMode(HOOK_PIN, INPUT_PULLUP);
@@ -255,20 +257,23 @@ void startRecording() {
 }
 
 void continueRecording() {
+#define NBLOX 16  
   // Check if there is data in the queue
-  if (queue1.available() >= 2) {
+  if (queue1.available() >= NBLOX) {
     byte buffer[512];
+    byte buffer[NBLOX*AUDIO_BLOCK_SAMPLES*sizeof(int16_t)];
     // Fetch 2 blocks from the audio library and copy
     // into a 512 byte buffer.  The Arduino SD library
     // is most efficient when full 512 byte sector size
     // writes are used.
-    memcpy(buffer, queue1.readBuffer(), 256);
-    queue1.freeBuffer();
-    memcpy(buffer+256, queue1.readBuffer(), 256);
-    queue1.freeBuffer();
+    for (int i=0;i<NBLOX;i++)
+    {
+      memcpy(buffer+i*AUDIO_BLOCK_SAMPLES*sizeof(int16_t), queue1.readBuffer(), AUDIO_BLOCK_SAMPLES*sizeof(int16_t));
+      queue1.freeBuffer();
+    }
     // Write all 512 bytes to the SD card
-    frec.write(buffer, 512);
-    recByteSaved += 512;
+    frec.write(buffer, sizeof buffer);
+    recByteSaved += sizeof buffer;
   }
 }
 
@@ -278,9 +283,9 @@ void stopRecording() {
   // Flush all existing remaining data from the queue
   while (queue1.available() > 0) {
     // Save to open file
-    frec.write((byte*)queue1.readBuffer(), 256);
+    frec.write((byte*)queue1.readBuffer(), AUDIO_BLOCK_SAMPLES*sizeof(int16_t));
     queue1.freeBuffer();
-    recByteSaved += 256;
+    recByteSaved += AUDIO_BLOCK_SAMPLES*sizeof(int16_t);
   }
   writeOutHeader();
   // Close the file
@@ -412,8 +417,8 @@ void writeOutHeader() { // update WAV header with final filesize/datasize
 
 //  NumSamples = (recByteSaved*8)/bitsPerSample/numChannels;
 //  Subchunk2Size = NumSamples*numChannels*bitsPerSample/8; // number of samples x number of channels x number of bytes per sample
-  Subchunk2Size = recByteSaved;
-  ChunkSize = Subchunk2Size + 36;
+  Subchunk2Size = recByteSaved - 42; // because we didn't make space for the header to start with! Lose 21 samples...
+  ChunkSize = Subchunk2Size + 34; // was 36;
   frec.seek(0);
   frec.write("RIFF");
   byte1 = ChunkSize & 0xff;

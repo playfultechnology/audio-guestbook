@@ -2,6 +2,33 @@
 The audio guestbook is a converted telephone handset that guests can use to leave recorded messages at weddings, parties and other events, as sold by companies such as "After the Tone", "Fête Fone", "Life on Record", "At the Beep", and others.
 
 Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
+ 
+ ---
+## Audio tweaks
+### Background
+The "modifications by h4yn0nnym0u5e, October 27th 2022" work significantly better if the audio library is "tweaked" to use larger data blocks and thus less-frequent audio updates. This allows more time for an SD card write before an interrupt is missed and audio data are lost.
+### Installation method
+Unfortunately, "installation" is a bit messy, but you only have to do it once (unless you update your Arduino IDE or Teensyduino). The guestbook sketch folder contains two Arduino architecture configuration files, `boards.local.txt` and`platform.txt`. These must be used to update your existing configuration files; in Windows systems these will typically be in `C:\Program Files (x86)\Arduino\hardware\teensy\avr` [todo: where are they on Linux and Mac?].
+
+Before you do anything else, **_back up the existing configuration files_**! Then, make sure all running copies of the Arduino IDE are closed.
+
+The content of `boards.local.txt` should be merged with the existing file; if you don't have one, just copy this file in.
+
+You can either replace the existing `platform.txt` with the new one, or if the existing one looks _very_ different, try to edit it to include all four references to `build.flags.audio`, in similar locations to those found in the replacement file. 
+
+Once the configuration files have been amended, run the Arduino IDE and look at the Tools menu. All being well, you will see a new "Audio tweaks" setting available, with options `Normal` and `Bigger blocks (256 samples)`.
+### In use
+Open the audio guestbook sketch, ensure you have the correct Teensy options set, and set "Audio tweaks" to the `Bigger blocks (256 samples)` option. Upload as usual, and check that there's a message on the Serial console which says "Audio block set to 256 samples". If this is present, the tweaks installation is successful, and you should find your audio recordings less prone to glitches and dropouts. You should still use a decent SD card, and format it "properly" - there's plenty of guidance in the Teensy forum.
+
+For most audio projects, leave Audio tweaks set to `Normal`, as the audio library isn't fully tested with 256-sample blocks.
+
+### Technical stuff
+As noted above, the tweaks work by increasing the number of audio samples in an "audio block" from 128 to 256. This means that audio updates run every 5.8ms rather than the standard 2.9ms, with the consequence that an SD write can take nearly 12ms before an update is "lost". It would be better to figure out how to prevent the SD card write from masking interrupts, but I'm clearly not quite smart enough...
+
+---
+**Modifications by h4yn0nnym0u5e, October 27th 2022:**
+* modifications to improve recording reliability
+* corrected WAV header writes to make chunk lengths correct
 
 **Modifications by DD4WH, August 1st, 2022:**
 * recordings are now saved as WAV files
