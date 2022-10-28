@@ -22,6 +22,8 @@ Open the audio guestbook sketch, ensure you have the correct Teensy options set,
 
 For most audio projects, leave Audio tweaks set to `Normal`, as the audio library isn't fully tested with 256-sample blocks.
 
+_DO NOT_ copy the `play_wav_sd.cpp` and `.h` files to your Audio library: They _should_ appear as extra tabs in your Arduino IDE, but are _only_ of use for this project and _will_ break other audio applications using SD playback!
+
 ### Technical stuff
 As noted above, the tweaks work by increasing the number of audio samples in an "audio block" from 128 to 256. This means that audio updates run every 5.8ms rather than the standard 2.9ms, with the consequence that an SD write can take nearly 12ms before an update is "lost". It would be better to figure out how to prevent the SD card write from masking interrupts, but I'm clearly not quite smart enough...
 
