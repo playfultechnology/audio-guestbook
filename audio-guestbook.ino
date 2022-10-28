@@ -260,7 +260,6 @@ void continueRecording() {
 #define NBLOX 16  
   // Check if there is data in the queue
   if (queue1.available() >= NBLOX) {
-    byte buffer[512];
     byte buffer[NBLOX*AUDIO_BLOCK_SAMPLES*sizeof(int16_t)];
     // Fetch 2 blocks from the audio library and copy
     // into a 512 byte buffer.  The Arduino SD library
