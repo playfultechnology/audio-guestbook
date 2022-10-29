@@ -39,6 +39,8 @@
 #define HOOK_PIN 0
 #define PLAYBACK_BUTTON_PIN 1
 
+#define noINSTRUMENT_SD_WRITE
+
 // GLOBALS
 // Audio initialisation code can be generated using the GUI interface at https://www.pjrc.com/teensy/gui/
 // Inputs
@@ -69,6 +71,8 @@ enum Mode {Initialising, Ready, Prompting, Recording, Playing};
 Mode mode = Mode::Initialising;
 
 float beep_volume = 0.04f; // not too loud :-)
+
+bool enableMTP; // MTP interferes with recording: disable unless needed for download
 
 // variables for writing to WAV file
 unsigned long ChunkSize = 0L;
@@ -131,13 +135,22 @@ void setup() {
   }
     else Serial.println("SD card correctly initialized");
 
-  // mandatory to begin the MTP session.
-    MTP.begin();
+  // Check for play button already down: if so, enable MTP
+  if (LOW == digitalRead(PLAYBACK_BUTTON_PIN))  
+    enableMTP = true;
 
-  // Add SD Card
-//    MTP.addFilesystem(SD, "SD Card");
-    MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
-    Serial.println("Added SD card via MTP");
+  if (enableMTP)
+  {
+    // mandatory to begin the MTP session.
+      MTP.begin();
+  
+    // Add SD Card
+  //    MTP.addFilesystem(SD, "SD Card");
+      MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
+      Serial.println("Added SD card via MTP");
+  }
+  else
+      Serial.println("MTP disabled!");
     
     // Value in dB
 //  sgtl5000_1.micGain(15);
@@ -228,10 +241,20 @@ void loop() {
     case Mode::Initialising: // to make compiler happy
       break;  
   }   
-  MTP.loop();  //This is mandatory to be placed in the loop code.
+  
+  if (enableMTP)
+    MTP.loop();  // This is mandatory to be placed in the loop code.
 }
 
+#if defined(INSTRUMENT_SD_WRITE)
+static uint32_t worstSDwrite, printNext;
+#endif // defined(INSTRUMENT_SD_WRITE)
+
 void startRecording() {
+#if defined(INSTRUMENT_SD_WRITE)
+  worstSDwrite = 0;
+  printNext = 0;
+#endif // defined(INSTRUMENT_SD_WRITE)
   // Find the first available file number
 //  for (uint8_t i=0; i<9999; i++) { // BUGFIX uint8_t overflows if it reaches 255  
   for (uint16_t i=0; i<9999; i++) {   
@@ -257,6 +280,9 @@ void startRecording() {
 }
 
 void continueRecording() {
+#if defined(INSTRUMENT_SD_WRITE)
+  uint32_t started = micros();
+#endif // defined(INSTRUMENT_SD_WRITE)
 #define NBLOX 16  
   // Check if there is data in the queue
   if (queue1.available() >= NBLOX) {
@@ -274,6 +300,19 @@ void continueRecording() {
     frec.write(buffer, sizeof buffer);
     recByteSaved += sizeof buffer;
   }
+  
+#if defined(INSTRUMENT_SD_WRITE)
+  started = micros() - started;
+  if (started > worstSDwrite)
+    worstSDwrite = started;
+
+  if (millis() >= printNext)
+  {
+    Serial.printf("Worst write took %luus\n",worstSDwrite);
+    worstSDwrite = 0;
+    printNext = millis()+250;
+  }
+#endif // defined(INSTRUMENT_SD_WRITE)
 }
 
 void stopRecording() {

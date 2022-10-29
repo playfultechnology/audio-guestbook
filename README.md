@@ -4,6 +4,8 @@ The audio guestbook is a converted telephone handset that guests can use to leav
 Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
  
  ---
+## Enabling MTP at run-time
+In some cases, the MTP capability (allowing file transfer without removing the SD card) seems to interfere with recording. MTP is thus _disabled_ by default, but can be enabled by holding down the playback button when powering up. A suitable message is sent to the serial monitor so you can see if it's been enabled or not.
 ## Audio tweaks
 ### Background
 The "modifications by h4yn0nnym0u5e, October 27th 2022" work significantly better if the audio library is "tweaked" to use larger data blocks and thus less-frequent audio updates. This allows more time for an SD card write before an interrupt is missed and audio data are lost.
@@ -24,10 +26,13 @@ For most audio projects, leave Audio tweaks set to `Normal`, as the audio librar
 
 _DO NOT_ copy the `play_wav_sd.cpp` and `.h` files to your Audio library: They _should_ appear as extra tabs in your Arduino IDE, but are _only_ of use for this project and _will_ break other audio applications using SD playback!
 
-### Technical stuff
+## Technical stuff
+### Tweaks
 As noted above, the tweaks work by increasing the number of audio samples in an "audio block" from 128 to 256. This means that audio updates run every 5.8ms rather than the standard 2.9ms, with the consequence that an SD write can take nearly 12ms before an update is "lost". It would be better to figure out how to prevent the SD card write from masking interrupts, but I'm clearly not quite smart enough...
 
 The audio library AudioPlaySdWav object is unfortunately one of those that doesn't work well with anything other than a standard 128-sample audio block. Therefore, a (renamed) copy which _does_ work properly is now included within the sketch folder, and used instead of the stock object.
+### Instrumented SD writes
+You can monitor the time taken for SD card writes by defining the symbol `INSTRUMENT_SD_WRITE`. This is disabled by default, but a line ready for easy editing can be found near the top of the main sketch file. Ideally writes should take significantly less than 6000µs without audio tweaks, or 12000µs with them. Worst-case write times are output every 0.25s.
 
 ---
 **Modifications by h4yn0nnym0u5e, October 27th 2022:**
