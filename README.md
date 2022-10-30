@@ -35,9 +35,13 @@ The audio library AudioPlaySdWav object is unfortunately one of those that doesn
 You can monitor the time taken for SD card writes by defining the symbol `INSTRUMENT_SD_WRITE`. This is disabled by default, but a line ready for easy editing can be found near the top of the main sketch file. Ideally writes should take significantly less than 6000µs without audio tweaks, or 12000µs with them. Worst-case write times are output every 0.25s.
 
 ---
-**Modifications by h4yn0nnym0u5e, October 27th 2022:**
-* modifications to improve recording reliability
+**Modifications by h4yn0nnym0u5e, October 27th-30th 2022:**
+* modifications to improve recording reliability:
+  * write in larger chunks
+  * use bigger audio blocks to increase update period
+  * disable MTP by default (can be re-enabled without re-programming)
 * corrected WAV header writes to make chunk lengths correct
+* optional code to determine SD card write time
 
 **Modifications by DD4WH, August 1st, 2022:**
 * recordings are now saved as WAV files
