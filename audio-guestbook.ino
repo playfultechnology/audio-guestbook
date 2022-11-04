@@ -28,6 +28,7 @@
 #include <SD.h>
 #include <TimeLib.h>
 #include <MTP_Teensy.h>
+#include "play_sd_wav.h" // local copy with fixes
 
 // DEFINES
 // Define pins used by Teensy Audio Shield
@@ -38,12 +39,14 @@
 #define HOOK_PIN 0
 #define PLAYBACK_BUTTON_PIN 1
 
+#define noINSTRUMENT_SD_WRITE
+
 // GLOBALS
 // Audio initialisation code can be generated using the GUI interface at https://www.pjrc.com/teensy/gui/
 // Inputs
 AudioSynthWaveform          waveform1; // To create the "beep" sfx
 AudioInputI2S               i2s2; // I2S input from microphone on audio shield
-AudioPlaySdWav              playWav1; // Play 44.1kHz 16-bit PCM greeting WAV file
+AudioPlaySdWavX              playWav1; // Play 44.1kHz 16-bit PCM greeting WAV file
 AudioRecordQueue            queue1; // Creating an audio buffer in memory before saving to SD
 AudioMixer4                 mixer; // Allows merging several inputs to same output
 AudioOutputI2S              i2s1; // I2S interface to Speaker/Line Out on Audio shield
@@ -69,6 +72,8 @@ Mode mode = Mode::Initialising;
 
 float beep_volume = 0.04f; // not too loud :-)
 
+uint32_t MTPcheckInterval; // default value of device check interval [ms]
+
 // variables for writing to WAV file
 unsigned long ChunkSize = 0L;
 unsigned long Subchunk1Size = 16;
@@ -91,6 +96,7 @@ void setup() {
     // wait for serial port to connect.
   }
   Serial.println("Serial set up correctly");
+  Serial.printf("Audio block set to %d samples\n",AUDIO_BLOCK_SAMPLES);
   print_mode();
   // Configure the input pins
   pinMode(HOOK_PIN, INPUT_PULLUP);
@@ -129,6 +135,7 @@ void setup() {
   }
     else Serial.println("SD card correctly initialized");
 
+
   // mandatory to begin the MTP session.
     MTP.begin();
 
@@ -136,6 +143,7 @@ void setup() {
 //    MTP.addFilesystem(SD, "SD Card");
     MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
     Serial.println("Added SD card via MTP");
+    MTPcheckInterval = MTP.storage()->get_DeltaDeviceCheckTimeMS();
     
     // Value in dB
 //  sgtl5000_1.micGain(15);
@@ -226,10 +234,36 @@ void loop() {
     case Mode::Initialising: // to make compiler happy
       break;  
   }   
-  MTP.loop();  //This is mandatory to be placed in the loop code.
+  
+  MTP.loop();  // This is mandatory to be placed in the loop code.
 }
 
+void setMTPdeviceChecks(bool nable)
+{
+  if (nable)
+  {
+    MTP.storage()->set_DeltaDeviceCheckTimeMS(MTPcheckInterval);
+    Serial.print("En");
+  }
+  else
+  {
+    MTP.storage()->set_DeltaDeviceCheckTimeMS((uint32_t) -1);
+    Serial.print("Dis");
+  }
+  Serial.println("abled MTP storage device checks");
+}
+  
+
+#if defined(INSTRUMENT_SD_WRITE)
+static uint32_t worstSDwrite, printNext;
+#endif // defined(INSTRUMENT_SD_WRITE)
+
 void startRecording() {
+  setMTPdeviceChecks(false); // disable MTP device checks while recording
+#if defined(INSTRUMENT_SD_WRITE)
+  worstSDwrite = 0;
+  printNext = 0;
+#endif // defined(INSTRUMENT_SD_WRITE)
   // Find the first available file number
 //  for (uint8_t i=0; i<9999; i++) { // BUGFIX uint8_t overflows if it reaches 255  
   for (uint16_t i=0; i<9999; i++) {   
@@ -255,21 +289,39 @@ void startRecording() {
 }
 
 void continueRecording() {
+#if defined(INSTRUMENT_SD_WRITE)
+  uint32_t started = micros();
+#endif // defined(INSTRUMENT_SD_WRITE)
+#define NBLOX 16  
   // Check if there is data in the queue
-  if (queue1.available() >= 2) {
-    byte buffer[512];
+  if (queue1.available() >= NBLOX) {
+    byte buffer[NBLOX*AUDIO_BLOCK_SAMPLES*sizeof(int16_t)];
     // Fetch 2 blocks from the audio library and copy
     // into a 512 byte buffer.  The Arduino SD library
     // is most efficient when full 512 byte sector size
     // writes are used.
-    memcpy(buffer, queue1.readBuffer(), 256);
-    queue1.freeBuffer();
-    memcpy(buffer+256, queue1.readBuffer(), 256);
-    queue1.freeBuffer();
+    for (int i=0;i<NBLOX;i++)
+    {
+      memcpy(buffer+i*AUDIO_BLOCK_SAMPLES*sizeof(int16_t), queue1.readBuffer(), AUDIO_BLOCK_SAMPLES*sizeof(int16_t));
+      queue1.freeBuffer();
+    }
     // Write all 512 bytes to the SD card
-    frec.write(buffer, 512);
-    recByteSaved += 512;
+    frec.write(buffer, sizeof buffer);
+    recByteSaved += sizeof buffer;
   }
+  
+#if defined(INSTRUMENT_SD_WRITE)
+  started = micros() - started;
+  if (started > worstSDwrite)
+    worstSDwrite = started;
+
+  if (millis() >= printNext)
+  {
+    Serial.printf("Worst write took %luus\n",worstSDwrite);
+    worstSDwrite = 0;
+    printNext = millis()+250;
+  }
+#endif // defined(INSTRUMENT_SD_WRITE)
 }
 
 void stopRecording() {
@@ -278,15 +330,16 @@ void stopRecording() {
   // Flush all existing remaining data from the queue
   while (queue1.available() > 0) {
     // Save to open file
-    frec.write((byte*)queue1.readBuffer(), 256);
+    frec.write((byte*)queue1.readBuffer(), AUDIO_BLOCK_SAMPLES*sizeof(int16_t));
     queue1.freeBuffer();
-    recByteSaved += 256;
+    recByteSaved += AUDIO_BLOCK_SAMPLES*sizeof(int16_t);
   }
   writeOutHeader();
   // Close the file
   frec.close();
   Serial.println("Closed file");
   mode = Mode::Ready; print_mode();
+  setMTPdeviceChecks(true); // enable MTP device checks, recording is finished
 }
 
 
@@ -412,8 +465,8 @@ void writeOutHeader() { // update WAV header with final filesize/datasize
 
 //  NumSamples = (recByteSaved*8)/bitsPerSample/numChannels;
 //  Subchunk2Size = NumSamples*numChannels*bitsPerSample/8; // number of samples x number of channels x number of bytes per sample
-  Subchunk2Size = recByteSaved;
-  ChunkSize = Subchunk2Size + 36;
+  Subchunk2Size = recByteSaved - 42; // because we didn't make space for the header to start with! Lose 21 samples...
+  ChunkSize = Subchunk2Size + 34; // was 36;
   frec.seek(0);
   frec.write("RIFF");
   byte1 = ChunkSize & 0xff;
