@@ -72,7 +72,7 @@ Mode mode = Mode::Initialising;
 
 float beep_volume = 0.04f; // not too loud :-)
 
-bool enableMTP; // MTP interferes with recording: disable unless needed for download
+uint32_t MTPcheckInterval; // default value of device check interval [ms]
 
 // variables for writing to WAV file
 unsigned long ChunkSize = 0L;
@@ -135,22 +135,15 @@ void setup() {
   }
     else Serial.println("SD card correctly initialized");
 
-  // Check for play button already down: if so, enable MTP
-  if (LOW == digitalRead(PLAYBACK_BUTTON_PIN))  
-    enableMTP = true;
 
-  if (enableMTP)
-  {
-    // mandatory to begin the MTP session.
-      MTP.begin();
-  
-    // Add SD Card
-  //    MTP.addFilesystem(SD, "SD Card");
-      MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
-      Serial.println("Added SD card via MTP");
-  }
-  else
-      Serial.println("MTP disabled!");
+  // mandatory to begin the MTP session.
+    MTP.begin();
+
+  // Add SD Card
+//    MTP.addFilesystem(SD, "SD Card");
+    MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
+    Serial.println("Added SD card via MTP");
+    MTPcheckInterval = MTP.storage()->get_DeltaDeviceCheckTimeMS();
     
     // Value in dB
 //  sgtl5000_1.micGain(15);
@@ -242,15 +235,31 @@ void loop() {
       break;  
   }   
   
-  if (enableMTP)
-    MTP.loop();  // This is mandatory to be placed in the loop code.
+  MTP.loop();  // This is mandatory to be placed in the loop code.
 }
+
+void setMTPdeviceChecks(bool nable)
+{
+  if (nable)
+  {
+    MTP.storage()->set_DeltaDeviceCheckTimeMS(MTPcheckInterval);
+    Serial.print("En");
+  }
+  else
+  {
+    MTP.storage()->set_DeltaDeviceCheckTimeMS((uint32_t) -1);
+    Serial.print("Dis");
+  }
+  Serial.println("abled MTP storage device checks");
+}
+  
 
 #if defined(INSTRUMENT_SD_WRITE)
 static uint32_t worstSDwrite, printNext;
 #endif // defined(INSTRUMENT_SD_WRITE)
 
 void startRecording() {
+  setMTPdeviceChecks(false); // disable MTP device checks while recording
 #if defined(INSTRUMENT_SD_WRITE)
   worstSDwrite = 0;
   printNext = 0;
@@ -330,6 +339,7 @@ void stopRecording() {
   frec.close();
   Serial.println("Closed file");
   mode = Mode::Ready; print_mode();
+  setMTPdeviceChecks(true); // enable MTP device checks, recording is finished
 }
 
 

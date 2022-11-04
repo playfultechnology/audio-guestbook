@@ -4,8 +4,8 @@ The audio guestbook is a converted telephone handset that guests can use to leav
 Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
  
  ---
-## Enabling MTP at run-time
-In some cases, the MTP capability (allowing file transfer without removing the SD card) seems to interfere with recording. MTP is thus _disabled_ by default, but can be enabled by holding down the playback button when powering up. A suitable message is sent to the serial monitor so you can see if it's been enabled or not.
+## Disabled MTP during recording
+In some cases, the MTP capability (allowing file transfer without removing the SD card) seems to interfere with recording. MTP medium-change checking is thus _disabled_ during recording. A suitable message is sent to the serial monitor so you can see when it's been enabled.
 ## Audio tweaks
 ### Background
 The "modifications by h4yn0nnym0u5e, October 27th 2022" work significantly better if the audio library is "tweaked" to use larger data blocks and thus less-frequent audio updates. This allows more time for an SD card write before an interrupt is missed and audio data are lost.
@@ -39,7 +39,7 @@ You can monitor the time taken for SD card writes by defining the symbol `INSTRU
 * modifications to improve recording reliability:
   * write in larger chunks
   * use bigger audio blocks to increase update period
-  * disable MTP by default (can be re-enabled without re-programming)
+  * disable MTP medium change checks during recording
 * corrected WAV header writes to make chunk lengths correct
 * optional code to determine SD card write time
 
@@ -50,7 +50,7 @@ You can monitor the time taken for SD card writes by defining the symbol `INSTRU
 * playback only plays the very last recorded file, not ALL the files ever recorded
 * does not play the greeting message again when you want to listen to your recordings
 * some bugfixes and warnings eliminated
-* do not forget that your greeting message has to be recorded as a wav with a sample rate of 44.1ksps, otherwise it is not played
+* do not forget that your greeting message has to be recorded as a WAV with a sample rate of 44.1ksps, otherwise it is not played
 * compile the code with CPU speed 150MHz, this can save a lot of battery power (reduction by about 70%)
 
 **DD4WH hardware:**
