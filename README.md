@@ -67,6 +67,7 @@ The greeting message is now recorded on the telephone itself. If there is no gre
 
 * uncomment/comment those three Configuration Defines according to your preferences. 
 * compile with option: "Serial + MTP Disk (Experimental)"" and with option "CPU speed: 150MHz" (this can save about 70% of battery power)
+* ALWAYS power your Audio Guest Book with a USB power bank or an external power supply, when you make recordings. Using the USB cable to the computer and simultaneously record leads to corrupted recordings ! See here: https://forum.pjrc.com/threads/70553-Teensy-4-0-based-Audio-Guestbook?p=316232&viewfull=1#post316232
 
 
 **Modifications by DD4WH, August 15th, 2022:**
