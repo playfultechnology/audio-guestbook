@@ -29,7 +29,8 @@ Once the configuration files have been amended, run the Arduino IDE and look at 
 ---
 
 ### MTP library
-This _must_ be downloaded from https://github.com/KurtE/MTP_Teensy and installed in your libraries folder.
+This _must_ be downloaded from https://github.com/KurtE/MTP_Teensy and installed in your libraries folder:
+![](https://github.com/h4yn0nnym0u5e/audio-guestbook/raw/feature/doc-01/images/MTP-location.png)
 
 ---
 
