@@ -34,7 +34,7 @@ This _must_ be downloaded from https://github.com/KurtE/MTP_Teensy and installed
 ---
 
 ## In use
-If you have downloaded and unzipped the code correctly, your file structure should look something like this (note the MTP library in its folder, as well as this application in its sketch folder):
+If you have downloaded and unzipped the code correctly, your file structure should look something like this (note the MTP_Teensy library in its folder, as well as this application in its sketch folder):
 ![](https://github.com/h4yn0nnym0u5e/audio-guestbook/raw/feature/doc-01/images/file-structure.png)
 
 Open the audio-guestbook sketch, and you should have three tabs in the Arduino IDE:
