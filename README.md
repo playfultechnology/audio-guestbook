@@ -4,6 +4,9 @@ The audio guestbook is a converted telephone handset that guests can use to leav
 Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
  
  ---
+## MTP Teensy Library
+Certain changes have been made to this project since its publication on YouTube that now require the MTP_Teensy library. The library is [hosted on GitHub](https://github.com/KurtE/MTP_Teensy/commits/main) and must be downloaded and added to the Teensy libraries directory (C:\Program Files (x86)\Arduino\hardware\teensy\avr\libraries). After that, from within the Arudino IDE, you must select: Tools -> USB Type -> Serial + MTP Disk (Experimental).
+
 ## Disabled MTP during recording
 In some cases, the MTP capability (allowing file transfer without removing the SD card) seems to interfere with recording. MTP medium-change checking is thus _disabled_ during recording. A suitable message is sent to the serial monitor so you can see when it's been enabled.
 ## Audio tweaks
@@ -33,6 +36,16 @@ As noted above, the tweaks work by increasing the number of audio samples in an 
 The audio library AudioPlaySdWav object is unfortunately one of those that doesn't work well with anything other than a standard 128-sample audio block. Therefore, a (renamed) copy which _does_ work properly is now included within the sketch folder, and used instead of the stock object.
 ### Instrumented SD writes
 You can monitor the time taken for SD card writes by defining the symbol `INSTRUMENT_SD_WRITE`. This is disabled by default, but a line ready for easy editing can be found near the top of the main sketch file. Ideally writes should take significantly less than 6000µs without audio tweaks, or 12000µs with them. Worst-case write times are output every 0.25s.
+
+## Recommended Hardware / Software
+If you'd prefer to run into as few issues as possible, it's recommended that you use the same hardware and software versions that were used when creating this project. These are:
+- Arduino IDE v1.8.x ([Windows download link for 1.8.19](https://downloads.arduino.cc/arduino-1.8.19-windows.exe));
+- Teensyduino 1.5.x ([Windows download link for 1.5.7](https://www.pjrc.com/teensy/td_157/TeensyduinoInstall.exe));
+- Teensy 4.0;
+- Audio Shield Rev D/D2.
+
+## Troubleshooting
+If you run into issues, please take a look at the [Issues](https://github.com/playfultechnology/audio-guestbook/issues) section of this GitHub project.
 
 ---
 **Modifications by h4yn0nnym0u5e, October 27th-30th 2022:**
