@@ -1,5 +1,5 @@
-# audio-guestbook by Alastair of playfultechnology
-**Modified by Frank, DD4WH**
+# Do not use this code or this description 
+# According to descriptions on the Teensy forum, it does not work
 
 *If you do not have a good soldering iron and a fine solder tip or if you have never soldered, I would recommend NOT to try to build this, but to start with a less complex project!*
 
