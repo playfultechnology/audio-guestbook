@@ -1,4 +1,4 @@
-# Do not use this code or this description 
+# Do not use this code or this build description 
 # According to descriptions on the Teensy forum, it does not work
 # Use the original code instead: https://github.com/playfultechnology/audio-guestbook
 
