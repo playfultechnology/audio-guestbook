@@ -1,5 +1,6 @@
 # Do not use this code or this description 
 # According to descriptions on the Teensy forum, it does not work
+# Use the original code instead: https://github.com/playfultechnology/audio-guestbook
 
 *If you do not have a good soldering iron and a fine solder tip or if you have never soldered, I would recommend NOT to try to build this, but to start with a less complex project!*
 
