@@ -32,14 +32,16 @@
 
 // DEFINES
 // Define pins used by Teensy Audio Shield
-#define SDCARD_CS_PIN    10
-#define SDCARD_MOSI_PIN  7
-#define SDCARD_SCK_PIN   14
+#define SDCARD_CS_PIN    BUILTIN_SDCARD
+#define SDCARD_MOSI_PIN  11
+#define SDCARD_SCK_PIN   13
 // And those used for inputs
 #define HOOK_PIN 0
 #define PLAYBACK_BUTTON_PIN 1
 
 #define noINSTRUMENT_SD_WRITE
+#define USE_SDIO 1
+#define BUTTON_PRESSES_GREETING 10
 
 // GLOBALS
 // Audio initialisation code can be generated using the GUI interface at https://www.pjrc.com/teensy/gui/
@@ -87,6 +89,14 @@ unsigned long Subchunk2Size = 0L;
 unsigned long recByteSaved = 0L;
 unsigned long NumSamples = 0L;
 byte byte1, byte2, byte3, byte4;
+// Variables will change:
+int lastPlayBackButtonState = 0;  // the previous state from the input pin
+unsigned long pressedTime  = 0;
+unsigned long releasedTime = 0;
+const int SHORT_PRESS_TIME = 200;
+const int LONG_PRESS_TIME = 600;
+String recordingType = "message";
+
 
 
 void setup() {
@@ -116,15 +126,15 @@ void setup() {
   mixer.gain(0, 1.0f);
   mixer.gain(1, 1.0f);
 
+
   // Play a beep to indicate system is online
   waveform1.begin(beep_volume, 440, WAVEFORM_SINE);
   wait(1000);
+  Serial.println("Beep!");
   waveform1.amplitude(0);
-  delay(1000);
+  delay(1000);               
 
   // Initialize the SD card
-  SPI.setMOSI(SDCARD_MOSI_PIN);
-  SPI.setSCK(SDCARD_SCK_PIN);
   if (!(SD.begin(SDCARD_CS_PIN))) 
   {
     // stop here if no SD card, but print a message
@@ -140,14 +150,15 @@ void setup() {
     MTP.begin();
 
   // Add SD Card
-//    MTP.addFilesystem(SD, "SD Card");
-    MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
+//    
+    MTP.addFilesystem(SD, "Audio Guestbook");
+    //MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
     Serial.println("Added SD card via MTP");
     MTPcheckInterval = MTP.storage()->get_DeltaDeviceCheckTimeMS();
     
     // Value in dB
 //  sgtl5000_1.micGain(15);
-  sgtl5000_1.micGain(5); // much lower gain is required for the AOM5024 electret capsule
+  sgtl5000_1.micGain(7); // much lower gain is required for the AOM5024 electret capsule
 
   // Synchronise the Time object used in the program code with the RTC time provider.
   // See https://github.com/PaulStoffregen/Time
@@ -168,21 +179,50 @@ void loop() {
   switch(mode){
     case Mode::Ready:
       // Falling edge occurs when the handset is lifted --> 611 telephone
-      if (buttonRecord.fallingEdge()) {
+      if (buttonRecord.fallingEdge() && lastPlayBackButtonState == 0) {
         Serial.println("Handset lifted");
         mode = Mode::Prompting; print_mode();
       }
-      else if(buttonPlay.fallingEdge()) {
-        //playAllRecordings();
-        playLastRecording();
+      else if(buttonPlay.risingEdge()) {      // button is pressed
+            pressedTime = millis();
+            Serial.println("Button pressed");
+            Serial.println("at " + (String) pressedTime);
+            lastPlayBackButtonState = 1;
+      }
+      
+      if(lastPlayBackButtonState == 1 && buttonPlay.fallingEdge()) { // button is released
+        releasedTime = millis();
+        long pressDuration = releasedTime - pressedTime;
+        Serial.println("Button released");
+        Serial.println("at " + (String) releasedTime);
+        Serial.println("Button duration " + (String) pressDuration);
+        playWav1.stop();
+        if( pressDuration > SHORT_PRESS_TIME && pressDuration < LONG_PRESS_TIME) {
+          Serial.println("Greeting Remove");
+          SD.remove("greeting.wav");
+          delay(2000);
+          end_Beep();
+          end_Beep();
+          return;
+        }else{
+          playLastRecording();
+          lastPlayBackButtonState = 0;
+          return;
+        }
       }
       break;
 
     case Mode::Prompting:
       // Wait a second for users to put the handset to their ear
-      wait(1000);
+      wait(1500);
+      recordingType = "normal";
       // Play the greeting inviting them to record their message
-      playWav1.play("greeting.wav");    
+      if(SD.exists("greeting.wav")) {
+        playWav1.play("greeting.wav");   
+      }else{
+        playWav1.play("greeting_default.wav");   
+      }
+       
       // Wait until the  message has finished playing
 //      while (playWav1.isPlaying()) {
       while (!playWav1.isStopped()) {
@@ -195,14 +235,38 @@ void loop() {
           mode = Mode::Ready; print_mode();
           return;
         }
-        if(buttonPlay.fallingEdge()) {
-          playWav1.stop();
-          //playAllRecordings();
-          playLastRecording();
-          return;
+
+        if(buttonPlay.risingEdge()) {      // button is pressed
+            pressedTime = millis();
+            Serial.println("Button pressed");
+            Serial.println("at " + (String) pressedTime);
+            lastPlayBackButtonState = 1;
         }
-        
+
+        if(lastPlayBackButtonState == 1 && buttonPlay.fallingEdge()) { // button is released
+          releasedTime = millis();
+          long pressDuration = releasedTime - pressedTime;
+          Serial.println("Button released");
+          Serial.println("at " + (String) releasedTime);
+          Serial.println("Button duration " + (String) pressDuration);
+          playWav1.stop();
+          if( pressDuration > SHORT_PRESS_TIME && pressDuration < LONG_PRESS_TIME) {
+            Serial.println("Greeting Remove");
+            SD.remove("greeting.wav");
+            Serial.println("Greeting Beep");
+            recordingType = "greeting";
+            greeting_Beep();
+            delay(1000);
+            playWav1.play("greeting_record_prompt.wav");
+            delay(2000);
+          }else{
+            playLastRecording();
+            lastPlayBackButtonState = 0;
+            return;
+          }
+        }
       }
+
       // Debug message
       Serial.println("Starting Recording");
       // Play the tone sound effect
@@ -210,9 +274,9 @@ void loop() {
       wait(1250);
       waveform1.amplitude(0);
       // Start the recording function
+      lastPlayBackButtonState = 0;
       startRecording();
       break;
-
     case Mode::Recording:
       // Handset is replaced
       if(buttonRecord.risingEdge()){
@@ -227,7 +291,6 @@ void loop() {
         continueRecording();
       }
       break;
-
     case Mode::Playing: // to make compiler happy
       break;  
 
@@ -265,17 +328,23 @@ void startRecording() {
   printNext = 0;
 #endif // defined(INSTRUMENT_SD_WRITE)
   // Find the first available file number
-//  for (uint8_t i=0; i<9999; i++) { // BUGFIX uint8_t overflows if it reaches 255  
-  for (uint16_t i=0; i<9999; i++) {   
-    // Format the counter as a five-digit number with leading zeroes, followed by file extension
-    snprintf(filename, 11, " %05d.wav", i);
-    // Create if does not exist, do not open existing, write, sync after write
-    if (!SD.exists(filename)) {
-      break;
+//  for (uint8_t i=0; i<9999; i++) { // BUGFIX uint8_t overflows if it reaches 255
+  Serial.println(recordingType);  
+  if (recordingType == "greeting") {
+    frec = SD.open("greeting.wav", FILE_WRITE);
+    Serial.println("Opened file greeting.wav!");
+  } else {
+    for (uint16_t i=0; i<9999; i++) {   
+      // Format the counter as a five-digit number with leading zeroes, followed by file extension
+      snprintf(filename, 11, " %05d.wav", i);
+      // Create if does not exist, do not open existing, write, sync after write
+      if (!SD.exists(filename)) {
+        break;
+      }
     }
+    frec = SD.open(filename, FILE_WRITE);
+    Serial.println("Opened file !");
   }
-  frec = SD.open(filename, FILE_WRITE);
-  Serial.println("Opened file !");
   if(frec) {
     Serial.print("Recording to ");
     Serial.println(filename);
@@ -531,6 +600,31 @@ void end_Beep(void) {
         wait(250);
         waveform1.amplitude(beep_volume);
         wait(250);
+        waveform1.amplitude(0);
+}
+
+
+void greeting_Beep(void) {
+        waveform1.frequency(523.25);
+        waveform1.amplitude(beep_volume);
+        wait(250);
+        waveform1.amplitude(0);
+        wait(250);
+        waveform1.amplitude(beep_volume);
+        wait(250);
+        waveform1.amplitude(0);
+        wait(250);
+        waveform1.amplitude(beep_volume);
+        wait(250);
+        waveform1.amplitude(0);
+        wait(250);
+        waveform1.amplitude(beep_volume);
+        wait(250);
+        waveform1.amplitude(0);
+        // Play a beep to indicate system is online
+        waveform1.begin(beep_volume, 440, WAVEFORM_SINE);
+        wait(1000);
+        Serial.println("Greeting Beep!");
         waveform1.amplitude(0);
 }
 
