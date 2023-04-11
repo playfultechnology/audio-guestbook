@@ -26,6 +26,12 @@ For most audio projects, leave Audio tweaks set to `Normal`, as the audio librar
 
 _DO NOT_ copy the `play_wav_sd.cpp` and `.h` files to your Audio library: They _should_ appear as extra tabs in your Arduino IDE, but are _only_ of use for this project and _will_ break other audio applications using SD playback!
 
+Includes a new default greeting option, a way of recording a custom greeting by pressing the playback button twice with 200 + 600 milli seconds when the phone is in prompting mode. You can also delete the custom greeting by pressing the playback button twice with 200 + 600 milli seconds when the phone is in Ready mode (handset is in place).
+
+You need to copy the default_greeting.wav and greeting_record_prompt.wav to the root of the SD card.
+
+default_greeting.wav will be used whenever a greeting.wav is not present. greeting_record_prompt.wav will be played immediately before the phone will record a new greeting file.
+
 ## Technical stuff
 ### Tweaks
 As noted above, the tweaks work by increasing the number of audio samples in an "audio block" from 128 to 256. This means that audio updates run every 5.8ms rather than the standard 2.9ms, with the consequence that an SD write can take nearly 12ms before an update is "lost". It would be better to figure out how to prevent the SD card write from masking interrupts, but I'm clearly not quite smart enough...
