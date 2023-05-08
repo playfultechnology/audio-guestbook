@@ -190,7 +190,7 @@ void loop() {
         buttonRecord.update();
         buttonPlay.update();
         // Handset is replaced
-        if(buttonRecord.risingEdge()) {
+        if (buttonRecord.read()) { // wait() may have lost edge - use the level instead
           playWav1.stop();
           mode = Mode::Ready; print_mode();
           return;
