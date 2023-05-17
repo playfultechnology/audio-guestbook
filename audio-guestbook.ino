@@ -46,12 +46,14 @@
 // Inputs
 AudioSynthWaveform          waveform1; // To create the "beep" sfx
 AudioInputI2S               i2s2; // I2S input from microphone on audio shield
-AudioPlaySdWavX              playWav1; // Play 44.1kHz 16-bit PCM greeting WAV file
+AudioPlaySdWavX              playGreeting; // Play 44.1kHz 16-bit PCM greeting WAV file
+AudioPlaySdWavX              playMessage;  // Play 44.1kHz 16-bit PCM message WAV file
 AudioRecordQueue            queue1; // Creating an audio buffer in memory before saving to SD
 AudioMixer4                 mixer; // Allows merging several inputs to same output
 AudioOutputI2S              i2s1; // I2S interface to Speaker/Line Out on Audio shield
 AudioConnection patchCord1(waveform1, 0, mixer, 0); // wave to mixer 
-AudioConnection patchCord3(playWav1, 0, mixer, 1); // wav file playback mixer
+AudioConnection patchCord2(playGreeting, 0, mixer, 1); // greeting file playback mixer
+AudioConnection patchCord3(playMessage, 0, mixer, 2); // message file playback mixer
 AudioConnection patchCord4(mixer, 0, i2s1, 0); // mixer output to speaker (L)
 AudioConnection patchCord6(mixer, 0, i2s1, 1); // mixer output to speaker (R)
 AudioConnection patchCord5(i2s2, 0, queue1, 0); // mic input to queue (L)
@@ -70,7 +72,7 @@ Bounce buttonPlay = Bounce(PLAYBACK_BUTTON_PIN, 40);
 enum Mode {Initialising, Ready, Prompting, Recording, Playing};
 Mode mode = Mode::Initialising;
 
-float beep_volume = 0.04f; // not too loud :-)
+float beep_volume = 0.4f; // not too loud :-)
 
 uint32_t MTPcheckInterval; // default value of device check interval [ms]
 
@@ -111,10 +113,15 @@ void setup() {
   // Define which input on the audio shield to use (AUDIO_INPUT_LINEIN / AUDIO_INPUT_MIC)
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
   //sgtl5000_1.adcHighPassFilterDisable(); //
-  sgtl5000_1.volume(0.95);
 
-  mixer.gain(0, 1.0f);
-  mixer.gain(1, 1.0f);
+  // ----- Level settings -----
+  sgtl5000_1.micGain(39); // set to suit your microphone
+  sgtl5000_1.volume(0.5); // overall speaker volume
+
+  mixer.gain(0, 0.1f); // beeps
+  mixer.gain(1, 0.1f); // greeting
+  mixer.gain(2, 1.0f); // message playback
+  // --------------------------
 
   // Play a beep to indicate system is online
   waveform1.begin(beep_volume, 440, WAVEFORM_SINE);
@@ -147,7 +154,7 @@ void setup() {
     
     // Value in dB
 //  sgtl5000_1.micGain(15);
-  sgtl5000_1.micGain(5); // much lower gain is required for the AOM5024 electret capsule
+//  sgtl5000_1.micGain(5); // much lower gain is required for the AOM5024 electret capsule
 
   // Synchronise the Time object used in the program code with the RTC time provider.
   // See https://github.com/PaulStoffregen/Time
@@ -182,21 +189,21 @@ void loop() {
       // Wait a second for users to put the handset to their ear
       wait(1000);
       // Play the greeting inviting them to record their message
-      playWav1.play("greeting.wav");    
+      playGreeting.play("greeting.wav");    
       // Wait until the  message has finished playing
-//      while (playWav1.isPlaying()) {
-      while (!playWav1.isStopped()) {
+//      while (playGreeting.isPlaying()) {
+      while (!playGreeting.isStopped()) {
         // Check whether the handset is replaced
         buttonRecord.update();
         buttonPlay.update();
         // Handset is replaced
         if (buttonRecord.read()) { // wait() may have lost edge - use the level instead
-          playWav1.stop();
+          playGreeting.stop();
           mode = Mode::Ready; print_mode();
           return;
         }
         if(buttonPlay.fallingEdge()) {
-          playWav1.stop();
+          playGreeting.stop();
           //playAllRecordings();
           playLastRecording();
           return;
@@ -371,19 +378,19 @@ void playAllRecordings() {
       wait(750);
       waveform1.amplitude(0);
       // Play the file
-      playWav1.play(entry.name());
+      playMessage.play(entry.name());
       mode = Mode::Playing; print_mode();
     }
     entry.close();
 
 //    while (playWav1.isPlaying()) { // strangely enough, this works for playRaw, but it does not work properly for playWav
-    while (!playWav1.isStopped()) { // this works for playWav
+    while (!playMessage.isStopped()) { // this works for playWav
       buttonPlay.update();
       buttonRecord.update();
       // Button is pressed again
 //      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
       if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { 
-        playWav1.stop();
+        playMessage.stop();
         mode = Mode::Ready; print_mode();
         return;
       }   
@@ -408,15 +415,15 @@ void playLastRecording() {
       // now play file with index idx == last recorded file
       snprintf(filename, 11, " %05d.wav", idx);
       Serial.println(filename);
-      playWav1.play(filename);
+      playMessage.play(filename);
       mode = Mode::Playing; print_mode();
-      while (!playWav1.isStopped()) { // this works for playWav
+      while (!playMessage.isStopped()) { // this works for playWav
       buttonPlay.update();
       buttonRecord.update();
       // Button is pressed again
 //      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
       if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
-        playWav1.stop();
+        playMessage.stop();
         mode = Mode::Ready; print_mode();
         return;
       }   
