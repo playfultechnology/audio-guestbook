@@ -264,109 +264,112 @@ void setMTPdeviceChecks(bool nable)
 }
 
 
+// Initialize the global variables for the worst SD write time and print interval
 #if defined(INSTRUMENT_SD_WRITE)
-static uint32_t worstSDwrite, printNext;
-#endif // defined(INSTRUMENT_SD_WRITE)
+static uint32_t worstSDwrite = 0;
+static uint32_t printNext = 0;
+#endif
 
 void startRecording() {
-    setMTPdeviceChecks(false); // disable MTP device checks while recording
+    setMTPdeviceChecks(false);
+
 #if defined(INSTRUMENT_SD_WRITE)
     worstSDwrite = 0;
-  printNext = 0;
-#endif // defined(INSTRUMENT_SD_WRITE)
-    // Find the first available file number
-//  for (uint8_t i=0; i<9999; i++) { // BUGFIX uint8_t overflows if it reaches 255
+    printNext = 0;
+#endif
+
     for (uint16_t i=0; i<9999; i++) {
-        // Format the counter as a five-digit number with leading zeroes, followed by file extension
         snprintf(filename, 11, " %05d.wav", i);
-        // Create if does not exist, do not open existing, write, sync after write
         if (!SD.exists(filename)) {
             break;
         }
     }
+
     frec = SD.open(filename, FILE_WRITE);
-    Serial.println("Opened file !");
+
     if(frec) {
-        Serial.print("Recording to ");
-        Serial.println(filename);
         queue1.begin();
-        mode = Mode::Recording; print_mode();
+        mode = Mode::Recording;
         recByteSaved = 0L;
-    }
-    else {
-        Serial.println("Couldn't open file to record!");
     }
 }
 
 void continueRecording() {
-#if defined(INSTRUMENT_SD_WRITE)
-    uint32_t started = micros();
-#endif // defined(INSTRUMENT_SD_WRITE)
 #define NBLOX 16
-    // Check if there is data in the queue
+
     if (queue1.available() >= NBLOX) {
         byte buffer[NBLOX*AUDIO_BLOCK_SAMPLES*sizeof(int16_t)];
-        // Fetch 2 blocks from the audio library and copy
-        // into a 512 byte buffer.  The Arduino SD library
-        // is most efficient when full 512 byte sector size
-        // writes are used.
-        for (int i=0;i<NBLOX;i++)
-        {
+
+        for (int i=0;i<NBLOX;i++) {
             memcpy(buffer+i*AUDIO_BLOCK_SAMPLES*sizeof(int16_t), queue1.readBuffer(), AUDIO_BLOCK_SAMPLES*sizeof(int16_t));
             queue1.freeBuffer();
         }
-        // Write all 512 bytes to the SD card
         frec.write(buffer, sizeof buffer);
         recByteSaved += sizeof buffer;
     }
 
 #if defined(INSTRUMENT_SD_WRITE)
-    started = micros() - started;
-  if (started > worstSDwrite)
-    worstSDwrite = started;
+    uint32_t started = micros() - started;
 
-  if (millis() >= printNext)
-  {
-    Serial.printf("Worst write took %luus\n",worstSDwrite);
-    worstSDwrite = 0;
-    printNext = millis()+250;
-  }
-#endif // defined(INSTRUMENT_SD_WRITE)
+    if (started > worstSDwrite) worstSDwrite = started;
+    if (millis() >= printNext) {
+        Serial.printf("Worst write took %luus\n",worstSDwrite);
+        worstSDwrite = 0;
+        printNext = millis()+250;
+    }
+#endif
 }
 
 void stopRecording() {
-    // Stop adding any new data to the queue
     queue1.end();
-    // Flush all existing remaining data from the queue
     while (queue1.available() > 0) {
-        // Save to open file
         frec.write((byte*)queue1.readBuffer(), AUDIO_BLOCK_SAMPLES*sizeof(int16_t));
         queue1.freeBuffer();
         recByteSaved += AUDIO_BLOCK_SAMPLES*sizeof(int16_t);
     }
     writeOutHeader();
-    // Close the file
     frec.close();
-    Serial.println("Closed file");
-    mode = Mode::Ready; print_mode();
-    setMTPdeviceChecks(true); // enable MTP device checks, recording is finished
+    mode = Mode::Ready;
+    setMTPdeviceChecks(true);
 }
 
+void playRecording(char* recordingName) {
+    if (strstr(recordingName, ".wav") || strstr(recordingName, ".WAV")) {
+        Serial.print("Now playing ");
+        Serial.println(recordingName);
+        waveform1.amplitude(beep_volume);
+        wait(750);
+        waveform1.amplitude(0);
+        playWav1.play(recordingName);
+        mode = Mode::Playing;
+    }
+}
+
+void stopPlayback() {
+    playWav1.stop();
+    mode = Mode::Ready;
+}
+
+// Helper function to check if stop is triggered
+bool checkForStop() {
+    buttonPlay.update();
+    buttonRecord.update();
+    // Button is pressed again
+    if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
+        playWav1.stop();
+        mode = Mode::Ready; print_mode();
+        return true;  // Indicate that stop has been triggered
+    }
+    return false;  // Indicate that stop has not been triggered
+}
 
 void playAllRecordings() {
-    // Recording files are saved in the root directory
     File dir = SD.open("/");
-
     while (true) {
         File entry =  dir.openNextFile();
-
         if (strstr(entry.name(), "greeting"))
-        {
             entry =  dir.openNextFile();
-        }
-
         if (!entry) {
-            // no more files
             entry.close();
             end_Beep();
             break;
@@ -374,66 +377,41 @@ void playAllRecordings() {
         if (strstr(entry.name(), ".wav") || strstr(entry.name(), ".WAV")) {
             Serial.print("Now playing ");
             Serial.println(entry.name());
-            // Play a short beep before each message
             waveform1.amplitude(beep_volume);
             wait(750);
             waveform1.amplitude(0);
-            // Play the file
             playWav1.play(entry.name());
             mode = Mode::Playing; print_mode();
         }
         entry.close();
-
-//    while (playWav1.isPlaying()) { // strangely enough, this works for playRaw, but it does not work properly for playWav
-        while (!playWav1.isStopped()) { // this works for playWav
-            buttonPlay.update();
-            buttonRecord.update();
-            // Button is pressed again
-//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
-            if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
-                playWav1.stop();
-                mode = Mode::Ready; print_mode();
+        while (!playWav1.isStopped()) {
+            if(checkForStop())
                 return;
-            }
         }
     }
-    // All files have been played
     mode = Mode::Ready; print_mode();
 }
 
 void playLastRecording() {
-    // Find the first available file number
     uint16_t idx = 0;
     for (uint16_t i=0; i<9999; i++) {
-        // Format the counter as a five-digit number with leading zeroes, followed by file extension
         snprintf(filename, 11, " %05d.wav", i);
-        // check, if file with index i exists
         if (!SD.exists(filename)) {
             idx = i - 1;
             break;
         }
     }
-    // now play file with index idx == last recorded file
     snprintf(filename, 11, " %05d.wav", idx);
     Serial.println(filename);
     playWav1.play(filename);
     mode = Mode::Playing; print_mode();
-    while (!playWav1.isStopped()) { // this works for playWav
-        buttonPlay.update();
-        buttonRecord.update();
-        // Button is pressed again
-//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
-        if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
-            playWav1.stop();
-            mode = Mode::Ready; print_mode();
+    while (!playWav1.isStopped()) {
+        if(checkForStop())
             return;
-        }
     }
-    // file has been played
     mode = Mode::Ready; print_mode();
     end_Beep();
 }
-
 
 // Retrieve the current time from Teensy built-in RTC
 time_t getTeensy3Time(){
