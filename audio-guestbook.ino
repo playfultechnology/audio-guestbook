@@ -447,59 +447,43 @@ void wait(unsigned int milliseconds) {
 }
 
 
-void writeOutHeader() { // update WAV header with final filesize/datasize
+void writeFourBytes(unsigned int value) {
+    for (int i = 0; i < 4; i++) {
+        frec.write((value >> (i * 8)) & 0xFF);
+    }
+}
 
-//  NumSamples = (recByteSaved*8)/bitsPerSample/numChannels;
-//  Subchunk2Size = NumSamples*numChannels*bitsPerSample/8; // number of samples x number of channels x number of bytes per sample
-    Subchunk2Size = recByteSaved - 42; // because we didn't make space for the header to start with! Lose 21 samples...
-    ChunkSize = Subchunk2Size + 34; // was 36;
+void writeTwoBytes(unsigned int value) {
+    for (int i = 0; i < 2; i++) {
+        frec.write((value >> (i * 8)) & 0xFF);
+    }
+}
+
+void writeOutHeader() {
+    Subchunk2Size = recByteSaved - 42;
+    ChunkSize = Subchunk2Size + 34;
+
     frec.seek(0);
     frec.write("RIFF");
-    byte1 = ChunkSize & 0xff;
-    byte2 = (ChunkSize >> 8) & 0xff;
-    byte3 = (ChunkSize >> 16) & 0xff;
-    byte4 = (ChunkSize >> 24) & 0xff;
-    frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
+    writeFourBytes(ChunkSize);
     frec.write("WAVE");
     frec.write("fmt ");
-    byte1 = Subchunk1Size & 0xff;
-    byte2 = (Subchunk1Size >> 8) & 0xff;
-    byte3 = (Subchunk1Size >> 16) & 0xff;
-    byte4 = (Subchunk1Size >> 24) & 0xff;
-    frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
-    byte1 = AudioFormat & 0xff;
-    byte2 = (AudioFormat >> 8) & 0xff;
-    frec.write(byte1);  frec.write(byte2);
-    byte1 = numChannels & 0xff;
-    byte2 = (numChannels >> 8) & 0xff;
-    frec.write(byte1);  frec.write(byte2);
-    byte1 = sampleRate & 0xff;
-    byte2 = (sampleRate >> 8) & 0xff;
-    byte3 = (sampleRate >> 16) & 0xff;
-    byte4 = (sampleRate >> 24) & 0xff;
-    frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
-    byte1 = byteRate & 0xff;
-    byte2 = (byteRate >> 8) & 0xff;
-    byte3 = (byteRate >> 16) & 0xff;
-    byte4 = (byteRate >> 24) & 0xff;
-    frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
-    byte1 = blockAlign & 0xff;
-    byte2 = (blockAlign >> 8) & 0xff;
-    frec.write(byte1);  frec.write(byte2);
-    byte1 = bitsPerSample & 0xff;
-    byte2 = (bitsPerSample >> 8) & 0xff;
-    frec.write(byte1);  frec.write(byte2);
+    writeFourBytes(Subchunk1Size);
+    writeTwoBytes(AudioFormat);
+    writeTwoBytes(numChannels);
+    writeFourBytes(sampleRate);
+    writeFourBytes(byteRate);
+    writeTwoBytes(blockAlign);
+    writeTwoBytes(bitsPerSample);
     frec.write("data");
-    byte1 = Subchunk2Size & 0xff;
-    byte2 = (Subchunk2Size >> 8) & 0xff;
-    byte3 = (Subchunk2Size >> 16) & 0xff;
-    byte4 = (Subchunk2Size >> 24) & 0xff;
-    frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
+    writeFourBytes(Subchunk2Size);
+
     frec.close();
     Serial.println("header written");
     Serial.print("Subchunk2: ");
     Serial.println(Subchunk2Size);
 }
+
 
 void end_Beep(void) {
     waveform1.frequency(523.25);
