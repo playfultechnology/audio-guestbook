@@ -90,21 +90,35 @@ byte byte1, byte2, byte3, byte4;
 
 
 void setup() {
-
+    // Initialize serial communication
     Serial.begin(9600);
     while (!Serial && millis() < 5000) {
         // wait for serial port to connect.
     }
 
-    mixer.gain(1, 2.0);
+    // Set up audio
+    setUpAudio();
 
-    Serial.println("Serial set up correctly");
-    Serial.printf("Audio block set to %d samples\n",AUDIO_BLOCK_SAMPLES);
-    print_mode();
     // Configure the input pins
     pinMode(HOOK_PIN, INPUT_PULLUP);
     pinMode(PLAYBACK_BUTTON_PIN, INPUT_PULLUP);
 
+    // Initialize the SD card
+    initSDCard();
+
+    // Set up MTP
+    setUpMTP();
+
+    // Synchronise the Time object used in the program code with the RTC time provider.
+    setSyncProvider(getTeensy3Time);
+
+    // Define a callback that will assign the correct datetime for any file system operations
+    FsDateTime::setCallback(dateTime);
+
+    mode = Mode::Ready; print_mode();
+}
+
+void setUpAudio() {
     // Audio connections require memory, and the record queue
     // uses this memory to buffer incoming audio.
     AudioMemory(60);
@@ -113,33 +127,38 @@ void setup() {
     sgtl5000_1.enable();
     // Define which input on the audio shield to use (AUDIO_INPUT_LINEIN / AUDIO_INPUT_MIC)
     sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
-    //sgtl5000_1.adcHighPassFilterDisable(); //
-    sgtl5000_1.micGain(65);
+
+    // Value in dB
+    // lower gain is required for loud environments.
+    sgtl5000_1.micGain(5);
+
     sgtl5000_1.volume(1.0);
 
     mixer.gain(0, 1.0f);
-    mixer.gain(1, 1.0f);
+    mixer.gain(1, 2.0f);
 
     // Play a beep to indicate system is online
     waveform1.begin(beep_volume, 440, WAVEFORM_SINE);
-    wait(1000);
+    delay(1000);
     waveform1.amplitude(0);
     delay(1000);
+}
 
-    // Initialize the SD card
+void initSDCard() {
     SPI.setMOSI(SDCARD_MOSI_PIN);
     SPI.setSCK(SDCARD_SCK_PIN);
-    if (!(SD.begin(BUILTIN_SDCARD)))
-    {
+    if (!(SD.begin(BUILTIN_SDCARD))) {
         // stop here if no SD card, but print a message
         while (1) {
             Serial.println("Unable to access the SD card");
             delay(60000);
         }
+    } else {
+        Serial.println("SD card correctly initialized");
     }
-    else Serial.println("SD card correctly initialized");
+}
 
-
+void setUpMTP() {
     // mandatory to begin the MTP session.
     MTP.begin();
 
@@ -147,21 +166,8 @@ void setup() {
     MTP.addFilesystem(SD, "ACs Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
     Serial.println("Added SD card via MTP");
     MTPcheckInterval = MTP.storage()->get_DeltaDeviceCheckTimeMS();
-
-    // Value in dB
-//  sgtl5000_1.micGain(15);
-    sgtl5000_1.micGain(5); // much lower gain is required for the AOM5024 electret capsule
-
-    // Synchronise the Time object used in the program code with the RTC time provider.
-    // See https://github.com/PaulStoffregen/Time
-    setSyncProvider(getTeensy3Time);
-
-    // Define a callback that will assign the correct datetime for any file system operations
-    // (i.e. saving a new audio recording onto the SD card)
-    FsDateTime::setCallback(dateTime);
-
-    mode = Mode::Ready; print_mode();
 }
+
 
 void loop() {
     // First, read the buttons
@@ -269,7 +275,7 @@ void startRecording() {
   printNext = 0;
 #endif // defined(INSTRUMENT_SD_WRITE)
     // Find the first available file number
-//  for (uint8_t i=0; i<9999; i++) { // BUGFIX uint8_t overflows if it reaches 255  
+//  for (uint8_t i=0; i<9999; i++) { // BUGFIX uint8_t overflows if it reaches 255
     for (uint16_t i=0; i<9999; i++) {
         // Format the counter as a five-digit number with leading zeroes, followed by file extension
         snprintf(filename, 11, " %05d.wav", i);
@@ -353,20 +359,18 @@ void playAllRecordings() {
 
     while (true) {
         File entry =  dir.openNextFile();
+
         if (strstr(entry.name(), "greeting"))
         {
             entry =  dir.openNextFile();
         }
+
         if (!entry) {
             // no more files
             entry.close();
             end_Beep();
             break;
         }
-        //int8_t len = strlen(entry.name()) - 4;
-//    if (strstr(strlwr(entry.name() + (len - 4)), ".raw")) {
-//    if (strstr(strlwr(entry.name() + (len - 4)), ".wav")) {
-        // the lines above throw a warning, so I replace them with this (which is also easier to read):
         if (strstr(entry.name(), ".wav") || strstr(entry.name(), ".WAV")) {
             Serial.print("Now playing ");
             Serial.println(entry.name());
@@ -450,7 +454,7 @@ void dateTime(uint16_t* date, uint16_t* time, uint8_t* ms10) {
 }
 
 // Non-blocking delay, which pauses execution of main program logic,
-// but while still listening for input 
+// but while still listening for input
 void wait(unsigned int milliseconds) {
     elapsedMillis msec=0;
 
