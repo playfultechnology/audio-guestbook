@@ -90,21 +90,35 @@ byte byte1, byte2, byte3, byte4;
 
 
 void setup() {
-
+    // Initialize serial communication
     Serial.begin(9600);
     while (!Serial && millis() < 5000) {
         // wait for serial port to connect.
     }
 
-    mixer.gain(1, 2.0);
+    // Set up audio
+    setUpAudio();
 
-    Serial.println("Serial set up correctly");
-    Serial.printf("Audio block set to %d samples\n",AUDIO_BLOCK_SAMPLES);
-    print_mode();
     // Configure the input pins
     pinMode(HOOK_PIN, INPUT_PULLUP);
     pinMode(PLAYBACK_BUTTON_PIN, INPUT_PULLUP);
 
+    // Initialize the SD card
+    initSDCard();
+
+    // Set up MTP
+    setUpMTP();
+
+    // Synchronise the Time object used in the program code with the RTC time provider.
+    setSyncProvider(getTeensy3Time);
+
+    // Define a callback that will assign the correct datetime for any file system operations
+    FsDateTime::setCallback(dateTime);
+
+    mode = Mode::Ready; print_mode();
+}
+
+void setUpAudio() {
     // Audio connections require memory, and the record queue
     // uses this memory to buffer incoming audio.
     AudioMemory(60);
@@ -113,33 +127,38 @@ void setup() {
     sgtl5000_1.enable();
     // Define which input on the audio shield to use (AUDIO_INPUT_LINEIN / AUDIO_INPUT_MIC)
     sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
-    //sgtl5000_1.adcHighPassFilterDisable(); //
-    sgtl5000_1.micGain(65);
+
+    // Value in dB
+    // lower gain is required for loud environments.
+    sgtl5000_1.micGain(5);
+
     sgtl5000_1.volume(1.0);
 
     mixer.gain(0, 1.0f);
-    mixer.gain(1, 1.0f);
+    mixer.gain(1, 2.0f);
 
     // Play a beep to indicate system is online
     waveform1.begin(beep_volume, 440, WAVEFORM_SINE);
-    wait(1000);
+    delay(1000);
     waveform1.amplitude(0);
     delay(1000);
+}
 
-    // Initialize the SD card
+void initSDCard() {
     SPI.setMOSI(SDCARD_MOSI_PIN);
     SPI.setSCK(SDCARD_SCK_PIN);
-    if (!(SD.begin(BUILTIN_SDCARD)))
-    {
+    if (!(SD.begin(BUILTIN_SDCARD))) {
         // stop here if no SD card, but print a message
         while (1) {
             Serial.println("Unable to access the SD card");
             delay(60000);
         }
+    } else {
+        Serial.println("SD card correctly initialized");
     }
-    else Serial.println("SD card correctly initialized");
+}
 
-
+void setUpMTP() {
     // mandatory to begin the MTP session.
     MTP.begin();
 
@@ -147,21 +166,8 @@ void setup() {
     MTP.addFilesystem(SD, "ACs Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
     Serial.println("Added SD card via MTP");
     MTPcheckInterval = MTP.storage()->get_DeltaDeviceCheckTimeMS();
-
-    // Value in dB
-//  sgtl5000_1.micGain(15);
-    sgtl5000_1.micGain(5); // much lower gain is required for the AOM5024 electret capsule
-
-    // Synchronise the Time object used in the program code with the RTC time provider.
-    // See https://github.com/PaulStoffregen/Time
-    setSyncProvider(getTeensy3Time);
-
-    // Define a callback that will assign the correct datetime for any file system operations
-    // (i.e. saving a new audio recording onto the SD card)
-    FsDateTime::setCallback(dateTime);
-
-    mode = Mode::Ready; print_mode();
 }
+
 
 void loop() {
     // First, read the buttons
@@ -258,178 +264,154 @@ void setMTPdeviceChecks(bool nable)
 }
 
 
+// Initialize the global variables for the worst SD write time and print interval
 #if defined(INSTRUMENT_SD_WRITE)
-static uint32_t worstSDwrite, printNext;
-#endif // defined(INSTRUMENT_SD_WRITE)
+static uint32_t worstSDwrite = 0;
+static uint32_t printNext = 0;
+#endif
 
 void startRecording() {
-    setMTPdeviceChecks(false); // disable MTP device checks while recording
+    setMTPdeviceChecks(false);
+
 #if defined(INSTRUMENT_SD_WRITE)
     worstSDwrite = 0;
-  printNext = 0;
-#endif // defined(INSTRUMENT_SD_WRITE)
-    // Find the first available file number
-//  for (uint8_t i=0; i<9999; i++) { // BUGFIX uint8_t overflows if it reaches 255  
+    printNext = 0;
+#endif
+
     for (uint16_t i=0; i<9999; i++) {
-        // Format the counter as a five-digit number with leading zeroes, followed by file extension
         snprintf(filename, 11, " %05d.wav", i);
-        // Create if does not exist, do not open existing, write, sync after write
         if (!SD.exists(filename)) {
             break;
         }
     }
+
     frec = SD.open(filename, FILE_WRITE);
-    Serial.println("Opened file !");
+
     if(frec) {
-        Serial.print("Recording to ");
-        Serial.println(filename);
         queue1.begin();
-        mode = Mode::Recording; print_mode();
+        mode = Mode::Recording;
         recByteSaved = 0L;
-    }
-    else {
-        Serial.println("Couldn't open file to record!");
     }
 }
 
 void continueRecording() {
-#if defined(INSTRUMENT_SD_WRITE)
-    uint32_t started = micros();
-#endif // defined(INSTRUMENT_SD_WRITE)
 #define NBLOX 16
-    // Check if there is data in the queue
+
     if (queue1.available() >= NBLOX) {
         byte buffer[NBLOX*AUDIO_BLOCK_SAMPLES*sizeof(int16_t)];
-        // Fetch 2 blocks from the audio library and copy
-        // into a 512 byte buffer.  The Arduino SD library
-        // is most efficient when full 512 byte sector size
-        // writes are used.
-        for (int i=0;i<NBLOX;i++)
-        {
+
+        for (int i=0;i<NBLOX;i++) {
             memcpy(buffer+i*AUDIO_BLOCK_SAMPLES*sizeof(int16_t), queue1.readBuffer(), AUDIO_BLOCK_SAMPLES*sizeof(int16_t));
             queue1.freeBuffer();
         }
-        // Write all 512 bytes to the SD card
         frec.write(buffer, sizeof buffer);
         recByteSaved += sizeof buffer;
     }
 
 #if defined(INSTRUMENT_SD_WRITE)
-    started = micros() - started;
-  if (started > worstSDwrite)
-    worstSDwrite = started;
+    uint32_t started = micros() - started;
 
-  if (millis() >= printNext)
-  {
-    Serial.printf("Worst write took %luus\n",worstSDwrite);
-    worstSDwrite = 0;
-    printNext = millis()+250;
-  }
-#endif // defined(INSTRUMENT_SD_WRITE)
+    if (started > worstSDwrite) worstSDwrite = started;
+    if (millis() >= printNext) {
+        Serial.printf("Worst write took %luus\n",worstSDwrite);
+        worstSDwrite = 0;
+        printNext = millis()+250;
+    }
+#endif
 }
 
 void stopRecording() {
-    // Stop adding any new data to the queue
     queue1.end();
-    // Flush all existing remaining data from the queue
     while (queue1.available() > 0) {
-        // Save to open file
         frec.write((byte*)queue1.readBuffer(), AUDIO_BLOCK_SAMPLES*sizeof(int16_t));
         queue1.freeBuffer();
         recByteSaved += AUDIO_BLOCK_SAMPLES*sizeof(int16_t);
     }
     writeOutHeader();
-    // Close the file
     frec.close();
-    Serial.println("Closed file");
-    mode = Mode::Ready; print_mode();
-    setMTPdeviceChecks(true); // enable MTP device checks, recording is finished
+    mode = Mode::Ready;
+    setMTPdeviceChecks(true);
 }
 
+void playRecording(char* recordingName) {
+    if (strstr(recordingName, ".wav") || strstr(recordingName, ".WAV")) {
+        Serial.print("Now playing ");
+        Serial.println(recordingName);
+        waveform1.amplitude(beep_volume);
+        wait(750);
+        waveform1.amplitude(0);
+        playWav1.play(recordingName);
+        mode = Mode::Playing;
+    }
+}
+
+void stopPlayback() {
+    playWav1.stop();
+    mode = Mode::Ready;
+}
+
+// Helper function to check if stop is triggered
+bool checkForStop() {
+    buttonPlay.update();
+    buttonRecord.update();
+    // Button is pressed again
+    if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
+        playWav1.stop();
+        mode = Mode::Ready; print_mode();
+        return true;  // Indicate that stop has been triggered
+    }
+    return false;  // Indicate that stop has not been triggered
+}
 
 void playAllRecordings() {
-    // Recording files are saved in the root directory
     File dir = SD.open("/");
-
     while (true) {
         File entry =  dir.openNextFile();
         if (strstr(entry.name(), "greeting"))
-        {
             entry =  dir.openNextFile();
-        }
         if (!entry) {
-            // no more files
             entry.close();
             end_Beep();
             break;
         }
-        //int8_t len = strlen(entry.name()) - 4;
-//    if (strstr(strlwr(entry.name() + (len - 4)), ".raw")) {
-//    if (strstr(strlwr(entry.name() + (len - 4)), ".wav")) {
-        // the lines above throw a warning, so I replace them with this (which is also easier to read):
         if (strstr(entry.name(), ".wav") || strstr(entry.name(), ".WAV")) {
             Serial.print("Now playing ");
             Serial.println(entry.name());
-            // Play a short beep before each message
             waveform1.amplitude(beep_volume);
             wait(750);
             waveform1.amplitude(0);
-            // Play the file
             playWav1.play(entry.name());
             mode = Mode::Playing; print_mode();
         }
         entry.close();
-
-//    while (playWav1.isPlaying()) { // strangely enough, this works for playRaw, but it does not work properly for playWav
-        while (!playWav1.isStopped()) { // this works for playWav
-            buttonPlay.update();
-            buttonRecord.update();
-            // Button is pressed again
-//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
-            if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
-                playWav1.stop();
-                mode = Mode::Ready; print_mode();
+        while (!playWav1.isStopped()) {
+            if(checkForStop())
                 return;
-            }
         }
     }
-    // All files have been played
     mode = Mode::Ready; print_mode();
 }
 
 void playLastRecording() {
-    // Find the first available file number
     uint16_t idx = 0;
     for (uint16_t i=0; i<9999; i++) {
-        // Format the counter as a five-digit number with leading zeroes, followed by file extension
         snprintf(filename, 11, " %05d.wav", i);
-        // check, if file with index i exists
         if (!SD.exists(filename)) {
             idx = i - 1;
             break;
         }
     }
-    // now play file with index idx == last recorded file
     snprintf(filename, 11, " %05d.wav", idx);
     Serial.println(filename);
     playWav1.play(filename);
     mode = Mode::Playing; print_mode();
-    while (!playWav1.isStopped()) { // this works for playWav
-        buttonPlay.update();
-        buttonRecord.update();
-        // Button is pressed again
-//      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
-        if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
-            playWav1.stop();
-            mode = Mode::Ready; print_mode();
+    while (!playWav1.isStopped()) {
+        if(checkForStop())
             return;
-        }
     }
-    // file has been played
     mode = Mode::Ready; print_mode();
     end_Beep();
 }
-
 
 // Retrieve the current time from Teensy built-in RTC
 time_t getTeensy3Time(){
@@ -450,7 +432,7 @@ void dateTime(uint16_t* date, uint16_t* time, uint8_t* ms10) {
 }
 
 // Non-blocking delay, which pauses execution of main program logic,
-// but while still listening for input 
+// but while still listening for input
 void wait(unsigned int milliseconds) {
     elapsedMillis msec=0;
 
@@ -465,59 +447,43 @@ void wait(unsigned int milliseconds) {
 }
 
 
-void writeOutHeader() { // update WAV header with final filesize/datasize
+void writeFourBytes(unsigned int value) {
+    for (int i = 0; i < 4; i++) {
+        frec.write((value >> (i * 8)) & 0xFF);
+    }
+}
 
-//  NumSamples = (recByteSaved*8)/bitsPerSample/numChannels;
-//  Subchunk2Size = NumSamples*numChannels*bitsPerSample/8; // number of samples x number of channels x number of bytes per sample
-    Subchunk2Size = recByteSaved - 42; // because we didn't make space for the header to start with! Lose 21 samples...
-    ChunkSize = Subchunk2Size + 34; // was 36;
+void writeTwoBytes(unsigned int value) {
+    for (int i = 0; i < 2; i++) {
+        frec.write((value >> (i * 8)) & 0xFF);
+    }
+}
+
+void writeOutHeader() {
+    Subchunk2Size = recByteSaved - 42;
+    ChunkSize = Subchunk2Size + 34;
+
     frec.seek(0);
     frec.write("RIFF");
-    byte1 = ChunkSize & 0xff;
-    byte2 = (ChunkSize >> 8) & 0xff;
-    byte3 = (ChunkSize >> 16) & 0xff;
-    byte4 = (ChunkSize >> 24) & 0xff;
-    frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
+    writeFourBytes(ChunkSize);
     frec.write("WAVE");
     frec.write("fmt ");
-    byte1 = Subchunk1Size & 0xff;
-    byte2 = (Subchunk1Size >> 8) & 0xff;
-    byte3 = (Subchunk1Size >> 16) & 0xff;
-    byte4 = (Subchunk1Size >> 24) & 0xff;
-    frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
-    byte1 = AudioFormat & 0xff;
-    byte2 = (AudioFormat >> 8) & 0xff;
-    frec.write(byte1);  frec.write(byte2);
-    byte1 = numChannels & 0xff;
-    byte2 = (numChannels >> 8) & 0xff;
-    frec.write(byte1);  frec.write(byte2);
-    byte1 = sampleRate & 0xff;
-    byte2 = (sampleRate >> 8) & 0xff;
-    byte3 = (sampleRate >> 16) & 0xff;
-    byte4 = (sampleRate >> 24) & 0xff;
-    frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
-    byte1 = byteRate & 0xff;
-    byte2 = (byteRate >> 8) & 0xff;
-    byte3 = (byteRate >> 16) & 0xff;
-    byte4 = (byteRate >> 24) & 0xff;
-    frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
-    byte1 = blockAlign & 0xff;
-    byte2 = (blockAlign >> 8) & 0xff;
-    frec.write(byte1);  frec.write(byte2);
-    byte1 = bitsPerSample & 0xff;
-    byte2 = (bitsPerSample >> 8) & 0xff;
-    frec.write(byte1);  frec.write(byte2);
+    writeFourBytes(Subchunk1Size);
+    writeTwoBytes(AudioFormat);
+    writeTwoBytes(numChannels);
+    writeFourBytes(sampleRate);
+    writeFourBytes(byteRate);
+    writeTwoBytes(blockAlign);
+    writeTwoBytes(bitsPerSample);
     frec.write("data");
-    byte1 = Subchunk2Size & 0xff;
-    byte2 = (Subchunk2Size >> 8) & 0xff;
-    byte3 = (Subchunk2Size >> 16) & 0xff;
-    byte4 = (Subchunk2Size >> 24) & 0xff;
-    frec.write(byte1);  frec.write(byte2);  frec.write(byte3);  frec.write(byte4);
+    writeFourBytes(Subchunk2Size);
+
     frec.close();
     Serial.println("header written");
     Serial.print("Subchunk2: ");
     Serial.println(Subchunk2Size);
 }
+
 
 void end_Beep(void) {
     waveform1.frequency(523.25);
