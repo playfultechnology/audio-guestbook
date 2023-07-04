@@ -192,9 +192,9 @@ void loop() {
             // Wait a second for users to put the handset to their ear
             wait(1000);
             // Play the greeting inviting them to record their message
+            Serial.println("Playing Greeting");
             playWav1.play("greeting.wav");
             // Wait until the  message has finished playing
-//      while (playWav1.isPlaying()) {
             while (!playWav1.isStopped()) {
                 // Check whether the handset is replaced
                 buttonRecord.update();
@@ -213,6 +213,8 @@ void loop() {
                 }
 
             }
+            Serial.println("Greeting");
+
             // Debug message
             Serial.println("Starting Recording");
             // Play the tone sound effect
