@@ -213,7 +213,7 @@ void loop() {
                 }
 
             }
-            Serial.println("Greeting");
+            Serial.println("Greeting Stopped");
 
             // Debug message
             Serial.println("Starting Recording");
