@@ -447,6 +447,7 @@ void dateTime(uint16_t* date, uint16_t* time, uint8_t* ms10) {
 
 // Non-blocking delay, which pauses execution of main program logic,
 // but while still listening for input 
+// Returns false on hook interrupt and true, if no interrupt.
 boolean wait(unsigned int milliseconds) {
   elapsedMillis msec=0;
 
