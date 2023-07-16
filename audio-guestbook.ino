@@ -207,10 +207,16 @@ void loop() {
       Serial.println("Starting Recording");
       // Play the tone sound effect
       waveform1.begin(beep_volume, 440, WAVEFORM_SINE);
-      wait(1250);
-      waveform1.amplitude(0);
+      if (wait(1250)) {
+        waveform1.amplitude(0);
       // Start the recording function
-      startRecording();
+          startRecording();
+      } else {
+        waveform1.amplitude(0);
+        mode = Mode::Ready; print_mode();
+        return;
+      }
+      
       break;
 
     case Mode::Recording:
