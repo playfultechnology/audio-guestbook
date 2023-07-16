@@ -447,17 +447,21 @@ void dateTime(uint16_t* date, uint16_t* time, uint8_t* ms10) {
 
 // Non-blocking delay, which pauses execution of main program logic,
 // but while still listening for input 
-void wait(unsigned int milliseconds) {
+boolean wait(unsigned int milliseconds) {
   elapsedMillis msec=0;
 
   while (msec <= milliseconds) {
     buttonRecord.update();
     buttonPlay.update();
-    if (buttonRecord.fallingEdge()) Serial.println("Button (pin 0) Press");
+    if (buttonRecord.fallingEdge()) {
+      Serial.println("Button (pin 0) Press");
+      return false;
+    }
     if (buttonPlay.fallingEdge()) Serial.println("Button (pin 1) Press");
     if (buttonRecord.risingEdge()) Serial.println("Button (pin 0) Release");
     if (buttonPlay.risingEdge()) Serial.println("Button (pin 1) Release");
   }
+  return true;
 }
 
 
