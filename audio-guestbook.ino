@@ -35,9 +35,12 @@
 #define SDCARD_CS_PIN    10
 #define SDCARD_MOSI_PIN  7
 #define SDCARD_SCK_PIN   14
+
 // And those used for inputs
 #define HOOK_PIN 0
 #define PLAYBACK_BUTTON_PIN 1
+
+#define MAX_RECORDING_TIME_MS 120'000 // limit recordings to this long (milliseconds)
 
 #define noINSTRUMENT_SD_WRITE
 
@@ -71,6 +74,7 @@ Bounce buttonPlay = Bounce(PLAYBACK_BUTTON_PIN, 40);
 // Keep track of current state of the device
 enum Mode {Initialising, Ready, Prompting, Recording, Playing};
 Mode mode = Mode::Initialising;
+elapsedMillis theTimer; // used to time out long messages
 
 float beep_volume = 0.4f; // not too loud :-)
 
@@ -116,10 +120,12 @@ void setup() {
 
   // ----- Level settings -----
   sgtl5000_1.micGain(39); // set to suit your microphone
+  sgtl5000_1.audioPreProcessorEnable(); // optional: could be a good plan...
+  sgtl5000_1.autoVolumeEnable();        // ...to prevent shouty people overloading the file
   sgtl5000_1.volume(0.5); // overall speaker volume
 
   mixer.gain(0, 0.1f); // beeps
-  mixer.gain(1, 0.1f); // greeting
+  mixer.gain(1, 0.5f); // greeting
   mixer.gain(2, 1.0f); // message playback
   // --------------------------
 
@@ -218,11 +224,14 @@ void loop() {
       waveform1.amplitude(0);
       // Start the recording function
       startRecording();
+      theTimer = 0;
       break;
 
     case Mode::Recording:
       // Handset is replaced
-      if(buttonRecord.risingEdge()){
+      if ( buttonRecord.risingEdge()
+        || theTimer >= MAX_RECORDING_TIME_MS) // ...or has been off-hook too long)
+      {
         // Debug log
         Serial.println("Stopping Recording");
         // Stop recording
