@@ -180,37 +180,47 @@ void loop() {
 
     case Mode::Prompting:
       // Wait a second for users to put the handset to their ear
-      wait(1000);
-      // Play the greeting inviting them to record their message
-      playWav1.play("greeting.wav");    
-      // Wait until the  message has finished playing
-//      while (playWav1.isPlaying()) {
-      while (!playWav1.isStopped()) {
-        // Check whether the handset is replaced
-        buttonRecord.update();
-        buttonPlay.update();
-        // Handset is replaced
-        if(buttonRecord.risingEdge()) {
-          playWav1.stop();
-          mode = Mode::Ready; print_mode();
-          return;
+      if (wait(1000)) {
+        // Play the greeting inviting them to record their message
+        playWav1.play("greeting.wav");
+        // Wait until the  message has finished playing
+        // while (playWav1.isPlaying()) {
+        while (!playWav1.isStopped()) {
+          // Check whether the handset is replaced
+          buttonRecord.update();
+          buttonPlay.update();
+          // Handset is replaced
+          if (buttonRecord.risingEdge()) {
+            playWav1.stop();
+            mode = Mode::Ready; print_mode();
+            return;
+          }
+          if (buttonPlay.fallingEdge()) {
+            playWav1.stop();
+            //playAllRecordings();
+            playLastRecording();
+            return;
+          }
+
         }
-        if(buttonPlay.fallingEdge()) {
-          playWav1.stop();
-          //playAllRecordings();
-          playLastRecording();
-          return;
-        }
-        
+      } else {
+        mode = Mode::Ready; print_mode();
+        return;
       }
       // Debug message
       Serial.println("Starting Recording");
       // Play the tone sound effect
       waveform1.begin(beep_volume, 440, WAVEFORM_SINE);
-      wait(1250);
-      waveform1.amplitude(0);
+      if (wait(1250)) {
+        waveform1.amplitude(0);
       // Start the recording function
-      startRecording();
+          startRecording();
+      } else {
+        waveform1.amplitude(0);
+        mode = Mode::Ready; print_mode();
+        return;
+      }
+      
       break;
 
     case Mode::Recording:
@@ -368,11 +378,16 @@ void playAllRecordings() {
       Serial.println(entry.name());
       // Play a short beep before each message
       waveform1.amplitude(beep_volume);
-      wait(750);
-      waveform1.amplitude(0);
-      // Play the file
-      playWav1.play(entry.name());
-      mode = Mode::Playing; print_mode();
+      if (wait(750)) {
+        waveform1.amplitude(0);
+        // Play the file
+        playWav1.play(entry.name());
+        mode = Mode::Playing; print_mode();
+      } else {
+        waveform1.amplitude(0);
+        mode = Mode::Ready; print_mode();
+        return;
+      }
     }
     entry.close();
 
@@ -447,17 +462,22 @@ void dateTime(uint16_t* date, uint16_t* time, uint8_t* ms10) {
 
 // Non-blocking delay, which pauses execution of main program logic,
 // but while still listening for input 
-void wait(unsigned int milliseconds) {
+// Returns false on hook interrupt and true, if no interrupt.
+boolean wait(unsigned int milliseconds) {
   elapsedMillis msec=0;
 
   while (msec <= milliseconds) {
     buttonRecord.update();
     buttonPlay.update();
-    if (buttonRecord.fallingEdge()) Serial.println("Button (pin 0) Press");
+    if (buttonRecord.fallingEdge()) {
+      Serial.println("Button (pin 0) Press");
+      return false;
+    }
     if (buttonPlay.fallingEdge()) Serial.println("Button (pin 1) Press");
     if (buttonRecord.risingEdge()) Serial.println("Button (pin 0) Release");
     if (buttonPlay.risingEdge()) Serial.println("Button (pin 1) Release");
   }
+  return true;
 }
 
 
