@@ -378,11 +378,16 @@ void playAllRecordings() {
       Serial.println(entry.name());
       // Play a short beep before each message
       waveform1.amplitude(beep_volume);
-      wait(750);
-      waveform1.amplitude(0);
-      // Play the file
-      playWav1.play(entry.name());
-      mode = Mode::Playing; print_mode();
+      if (wait(750)) {
+        waveform1.amplitude(0);
+        // Play the file
+        playWav1.play(entry.name());
+        mode = Mode::Playing; print_mode();
+      } else {
+        waveform1.amplitude(0);
+        mode = Mode::Ready; print_mode();
+        return;
+      }
     }
     entry.close();
 
