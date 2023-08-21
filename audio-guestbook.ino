@@ -180,28 +180,32 @@ void loop() {
 
     case Mode::Prompting:
       // Wait a second for users to put the handset to their ear
-      wait(1000);
-      // Play the greeting inviting them to record their message
-      playWav1.play("greeting.wav");    
-      // Wait until the  message has finished playing
-//      while (playWav1.isPlaying()) {
-      while (!playWav1.isStopped()) {
-        // Check whether the handset is replaced
-        buttonRecord.update();
-        buttonPlay.update();
-        // Handset is replaced
-        if(buttonRecord.risingEdge()) {
-          playWav1.stop();
-          mode = Mode::Ready; print_mode();
-          return;
+      if (wait(1000)) {
+        // Play the greeting inviting them to record their message
+        playWav1.play("greeting.wav");
+        // Wait until the  message has finished playing
+        // while (playWav1.isPlaying()) {
+        while (!playWav1.isStopped()) {
+          // Check whether the handset is replaced
+          buttonRecord.update();
+          buttonPlay.update();
+          // Handset is replaced
+          if (buttonRecord.risingEdge()) {
+            playWav1.stop();
+            mode = Mode::Ready; print_mode();
+            return;
+          }
+          if (buttonPlay.fallingEdge()) {
+            playWav1.stop();
+            //playAllRecordings();
+            playLastRecording();
+            return;
+          }
+
         }
-        if(buttonPlay.fallingEdge()) {
-          playWav1.stop();
-          //playAllRecordings();
-          playLastRecording();
-          return;
-        }
-        
+      } else {
+        mode = Mode::Ready; print_mode();
+        return;
       }
       // Debug message
       Serial.println("Starting Recording");
