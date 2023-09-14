@@ -35,10 +35,21 @@
 #define SDCARD_CS_PIN    10
 #define SDCARD_MOSI_PIN  7
 #define SDCARD_SCK_PIN   14
+int sd_cs_pin = BUILTIN_SDCARD;
 
 // And those used for inputs
-#define HOOK_PIN 0
-#define PLAYBACK_BUTTON_PIN 1
+// Idle value is usually 1, for normally-open
+// switches connected to a pin with a pullup
+int HOOK_PIN            = 0, HOOK_IDLE = 1;
+int PLAYBACK_BUTTON_PIN = 1, PLAY_IDLE = 1;
+
+// ------------ Audio settings ---------
+int micgain = 39;
+float speakervol = 0.5f, 
+      beepvol = 0.1f, 
+      greetingvol = 0.5f, 
+      playvol = 1.0f;
+// -------------------------------------
 
 #define MAX_RECORDING_TIME_MS 120'000 // limit recordings to this long (milliseconds)
 
@@ -67,18 +78,69 @@ char filename[15];
 // The file object itself
 File frec;
 
+// Conceal Bounce instances with a wrapper that allows us to 
+// select pin, debounce time and polarity at run-time
+class BounceZ
+{
+    int pin = 0;
+    uint32_t debounce = 10;
+    Bounce* bounce = nullptr;
+    int idleLevel;
+  public:
+    void begin(int _pin, uint32_t _debounce, int _idle)
+    {
+      pin = _pin;
+      debounce = _debounce;
+      idleLevel = _idle;
+      if (nullptr != bounce)
+        delete bounce;
+      bounce = new Bounce(pin, debounce);
+    }
+
+    bool update(void) { return bounce->update(); }
+
+    bool fallingEdge(void)
+    {
+      bool result;
+      if (1 == idleLevel)
+        result = bounce->fallingEdge();
+      else
+        result = bounce->risingEdge();
+      return result;
+    }
+    
+    bool risingEdge(void)
+    {
+      bool result;
+      if (1 == idleLevel)
+        result = bounce->risingEdge();
+      else
+        result = bounce->fallingEdge();
+      return result;
+    } 
+
+      bool read(void)
+      {
+        bool result = bounce->read();
+        if (0 == idleLevel) 
+          result = !result;
+        return result;
+      }     
+};
+
 // Use long 40ms debounce time on both switches
-Bounce buttonRecord = Bounce(HOOK_PIN, 40);
-Bounce buttonPlay = Bounce(PLAYBACK_BUTTON_PIN, 40);
+BounceZ buttonRecord; // = Bounce(HOOK_PIN, 40);
+BounceZ buttonPlay; // = Bounce(PLAYBACK_BUTTON_PIN, 40);
 
 // Keep track of current state of the device
 enum Mode {Initialising, Ready, Prompting, Recording, Playing};
 Mode mode = Mode::Initialising;
 elapsedMillis theTimer; // used to time out long messages
 
-float beep_volume = 0.4f; // not too loud :-)
+float beep_volume = 0.4f; // not too loud :-) .. but the volume is set in the mixer, really
 
 uint32_t MTPcheckInterval; // default value of device check interval [ms]
+char volname[50] = "Kais Audio guestbook";  // choose a nice name for the SD card volume to appear in your file explorer, or load from gbkcfg.txt
 
 // variables for writing to WAV file
 unsigned long ChunkSize = 0L;
@@ -94,6 +156,64 @@ unsigned long recByteSaved = 0L;
 unsigned long NumSamples = 0L;
 byte byte1, byte2, byte3, byte4;
 
+void getSettings(void)
+{
+  frec = SD.open("gbkcfg.txt");
+
+  Serial.println();
+  if (frec)
+  {
+    char buffer[50];
+
+    frec.setTimeout(1);
+
+    do
+    {
+      int got = frec.readBytesUntil('\n',buffer,sizeof buffer - 1);
+      if (0 == got)
+        break;
+
+      sscanf(buffer,"hookpin %d",&HOOK_PIN);
+      sscanf(buffer,"hookidle %d",&HOOK_IDLE);
+      sscanf(buffer,"playpin %d",&PLAYBACK_BUTTON_PIN);
+      sscanf(buffer,"playidle %d",&PLAY_IDLE);
+      sscanf(buffer,"micgain %d",&micgain);
+      sscanf(buffer,"speakervol %f",&speakervol);
+      sscanf(buffer,"beepvol %f",&beepvol);
+      sscanf(buffer,"greetingvol %f",&greetingvol);
+      sscanf(buffer,"playvol %f",&playvol);
+
+      // Try to parse a volume name      
+      got = -1;
+      sscanf(buffer,"volname %n",&got);
+      if (got > 0)
+      {
+        strncpy(volname,buffer+got,sizeof volname - 1);
+        for (size_t i = 0; i < sizeof volname; i++)
+          if (volname[i] < 32)
+          {
+            volname[i] = 0;
+            break;
+          }
+      }
+        
+        
+    } while (1);
+    frec.close();
+  }
+  else
+    Serial.println("No gbkcfg.txt found, using default settings");
+  Serial.println("Settings:");
+  Serial.printf("Volume name ''%s''\n",volname);
+  Serial.printf("hookpin %d, idle level %d\n",HOOK_PIN, HOOK_IDLE);
+  Serial.printf("playpin %d, idle level %d\n",PLAYBACK_BUTTON_PIN, PLAY_IDLE);
+  Serial.printf("micgain %d\n",micgain);
+  Serial.printf("speakervol %.2f\n",speakervol);
+  Serial.printf("beepvol %.2f\n",beepvol);
+  Serial.printf("greetingvol %.2f\n",greetingvol);
+  Serial.printf("playvol %.2f\n",playvol); 
+  Serial.println(); 
+}
 
 void setup() {
 
@@ -101,9 +221,35 @@ void setup() {
   while (!Serial && millis() < 5000) {
     // wait for serial port to connect.
   }
+  print_mode();
   Serial.println("Serial set up correctly");
   Serial.printf("Audio block set to %d samples\n",AUDIO_BLOCK_SAMPLES);
-  print_mode();
+
+  // Initialize the SD card
+  SPI.setMOSI(SDCARD_MOSI_PIN);
+  SPI.setSCK(SDCARD_SCK_PIN);
+
+  do
+  {
+    sd_cs_pin = BUILTIN_SDCARD;
+    if (SD.begin(sd_cs_pin))
+      break;
+    Serial.println("No SD card in built-in slot");
+    delay(250);
+
+    sd_cs_pin = SDCARD_CS_PIN;
+    if (SD.begin(sd_cs_pin))
+      break;
+    Serial.printf("No SD card on CS pin %d\n",sd_cs_pin);
+    delay(250);    
+  } while (1);
+  Serial.printf("SD card correctly initialized: pin %d\n",sd_cs_pin);
+
+  getSettings(); // try to read settings from SD card
+
+  buttonRecord.begin(HOOK_PIN,40,HOOK_IDLE);
+  buttonPlay.begin(PLAYBACK_BUTTON_PIN,40,PLAY_IDLE);
+  
   // Configure the input pins
   pinMode(HOOK_PIN, INPUT_PULLUP);
   pinMode(PLAYBACK_BUTTON_PIN, INPUT_PULLUP);
@@ -113,20 +259,21 @@ void setup() {
   AudioMemory(60);
 
   // Enable the audio shield, select input, and enable output
+  sgtl5000_1.setAddress(HIGH);
   sgtl5000_1.enable();
   // Define which input on the audio shield to use (AUDIO_INPUT_LINEIN / AUDIO_INPUT_MIC)
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
   //sgtl5000_1.adcHighPassFilterDisable(); //
 
   // ----- Level settings -----
-  sgtl5000_1.micGain(39); // set to suit your microphone
+  sgtl5000_1.micGain(micgain); // set to suit your microphone
   sgtl5000_1.audioPreProcessorEnable(); // optional: could be a good plan...
   sgtl5000_1.autoVolumeEnable();        // ...to prevent shouty people overloading the file
-  sgtl5000_1.volume(0.5); // overall speaker volume
+  sgtl5000_1.volume(speakervol); // overall speaker volume
 
-  mixer.gain(0, 0.1f); // beeps
-  mixer.gain(1, 0.5f); // greeting
-  mixer.gain(2, 1.0f); // message playback
+  mixer.gain(0, beepvol);     // beeps
+  mixer.gain(1, greetingvol); // greeting
+  mixer.gain(2, playvol);     // message playback
   // --------------------------
 
   // Play a beep to indicate system is online
@@ -135,26 +282,12 @@ void setup() {
   waveform1.amplitude(0);
   delay(1000);
 
-  // Initialize the SD card
-  SPI.setMOSI(SDCARD_MOSI_PIN);
-  SPI.setSCK(SDCARD_SCK_PIN);
-  if (!(SD.begin(SDCARD_CS_PIN))) 
-  {
-    // stop here if no SD card, but print a message
-    while (1) {
-      Serial.println("Unable to access the SD card");
-      delay(500);
-    }
-  }
-    else Serial.println("SD card correctly initialized");
-
-
   // mandatory to begin the MTP session.
     MTP.begin();
 
   // Add SD Card
 //    MTP.addFilesystem(SD, "SD Card");
-    MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
+    MTP.addFilesystem(SD, volname);
     Serial.println("Added SD card via MTP");
     MTPcheckInterval = MTP.storage()->get_DeltaDeviceCheckTimeMS();
     
