@@ -196,13 +196,12 @@ void getSettings(void)
             break;
           }
       }
-        
-        
     } while (1);
     frec.close();
   }
   else
     Serial.println("No gbkcfg.txt found, using default settings");
+    
   Serial.println("Settings:");
   Serial.printf("Volume name ''%s''\n",volname);
   Serial.printf("hookpin %d, idle level %d\n",HOOK_PIN, HOOK_IDLE);
@@ -215,8 +214,8 @@ void getSettings(void)
   Serial.println(); 
 }
 
-void setup() {
-
+void setup() 
+{
   Serial.begin(9600);
   while (!Serial && millis() < 5000) {
     // wait for serial port to connect.
@@ -306,7 +305,8 @@ void setup() {
   mode = Mode::Ready; print_mode();
 }
 
-void loop() {
+void loop() 
+{
   // First, read the buttons
   buttonRecord.update();
   buttonPlay.update();
