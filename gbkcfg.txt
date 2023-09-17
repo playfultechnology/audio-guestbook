@@ -8,4 +8,6 @@ beepvol 0.11
 greetingvol 0.51
 playvol 0.9
 volname My Audio Guestbook
+sgtladdr 0
+maxrec 120000
 

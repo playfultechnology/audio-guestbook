@@ -49,9 +49,10 @@ float speakervol = 0.5f,
       beepvol = 0.1f, 
       greetingvol = 0.5f, 
       playvol = 1.0f;
+int sgtladdr = 0;      
 // -------------------------------------
 
-#define MAX_RECORDING_TIME_MS 120'000 // limit recordings to this long (milliseconds)
+uint32_t MAX_RECORDING_TIME_MS = 120'000; // limit recordings to this long (milliseconds)
 
 #define noINSTRUMENT_SD_WRITE
 
@@ -182,6 +183,8 @@ void getSettings(void)
       sscanf(buffer,"beepvol %f",&beepvol);
       sscanf(buffer,"greetingvol %f",&greetingvol);
       sscanf(buffer,"playvol %f",&playvol);
+      sscanf(buffer,"maxrec %lu",&MAX_RECORDING_TIME_MS);
+      sscanf(buffer,"sgtladdr %d",&sgtladdr);
 
       // Try to parse a volume name      
       got = -1;
@@ -211,6 +214,8 @@ void getSettings(void)
   Serial.printf("beepvol %.2f\n",beepvol);
   Serial.printf("greetingvol %.2f\n",greetingvol);
   Serial.printf("playvol %.2f\n",playvol); 
+  Serial.printf("Max recording length %.3f seconds\n",(float) MAX_RECORDING_TIME_MS/1000.0f); 
+  Serial.printf("SGTL5000 address %s\n",sgtladdr?"high":"normal"); 
   Serial.println(); 
 }
 
@@ -258,7 +263,7 @@ void setup()
   AudioMemory(60);
 
   // Enable the audio shield, select input, and enable output
-  sgtl5000_1.setAddress(HIGH);
+  sgtl5000_1.setAddress(sgtladdr);
   sgtl5000_1.enable();
   // Define which input on the audio shield to use (AUDIO_INPUT_LINEIN / AUDIO_INPUT_MIC)
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
