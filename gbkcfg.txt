@@ -1,0 +1,13 @@
+hookpin 2
+hookidle 1
+playpin 1
+playidle 1
+micgain 38
+speakervol 0.51
+beepvol 0.11
+greetingvol 0.51
+playvol 0.9
+volname My Audio Guestbook
+sgtladdr 0
+maxrec 120000
+

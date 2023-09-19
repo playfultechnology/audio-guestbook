@@ -35,9 +35,24 @@
 #define SDCARD_CS_PIN    10
 #define SDCARD_MOSI_PIN  7
 #define SDCARD_SCK_PIN   14
+int sd_cs_pin = BUILTIN_SDCARD;
+
 // And those used for inputs
-#define HOOK_PIN 0
-#define PLAYBACK_BUTTON_PIN 1
+// Idle value is usually 1, for normally-open
+// switches connected to a pin with a pullup
+int HOOK_PIN            = 0, HOOK_IDLE = 1;
+int PLAYBACK_BUTTON_PIN = 1, PLAY_IDLE = 1;
+
+// ------------ Audio settings ---------
+int micgain = 39;
+float speakervol = 0.5f, 
+      beepvol = 0.1f, 
+      greetingvol = 0.5f, 
+      playvol = 1.0f;
+int sgtladdr = 0;      
+// -------------------------------------
+
+uint32_t MAX_RECORDING_TIME_MS = 120'000; // limit recordings to this long (milliseconds)
 
 #define noINSTRUMENT_SD_WRITE
 
@@ -46,12 +61,14 @@
 // Inputs
 AudioSynthWaveform          waveform1; // To create the "beep" sfx
 AudioInputI2S               i2s2; // I2S input from microphone on audio shield
-AudioPlaySdWavX              playWav1; // Play 44.1kHz 16-bit PCM greeting WAV file
+AudioPlaySdWavX              playGreeting; // Play 44.1kHz 16-bit PCM greeting WAV file
+AudioPlaySdWavX              playMessage;  // Play 44.1kHz 16-bit PCM message WAV file
 AudioRecordQueue            queue1; // Creating an audio buffer in memory before saving to SD
 AudioMixer4                 mixer; // Allows merging several inputs to same output
 AudioOutputI2S              i2s1; // I2S interface to Speaker/Line Out on Audio shield
 AudioConnection patchCord1(waveform1, 0, mixer, 0); // wave to mixer 
-AudioConnection patchCord3(playWav1, 0, mixer, 1); // wav file playback mixer
+AudioConnection patchCord2(playGreeting, 0, mixer, 1); // greeting file playback mixer
+AudioConnection patchCord3(playMessage, 0, mixer, 2); // message file playback mixer
 AudioConnection patchCord4(mixer, 0, i2s1, 0); // mixer output to speaker (L)
 AudioConnection patchCord6(mixer, 0, i2s1, 1); // mixer output to speaker (R)
 AudioConnection patchCord5(i2s2, 0, queue1, 0); // mic input to queue (L)
@@ -62,17 +79,69 @@ char filename[15];
 // The file object itself
 File frec;
 
+// Conceal Bounce instances with a wrapper that allows us to 
+// select pin, debounce time and polarity at run-time
+class BounceZ
+{
+    int pin = 0;
+    uint32_t debounce = 10;
+    Bounce* bounce = nullptr;
+    int idleLevel;
+  public:
+    void begin(int _pin, uint32_t _debounce, int _idle)
+    {
+      pin = _pin;
+      debounce = _debounce;
+      idleLevel = _idle;
+      if (nullptr != bounce)
+        delete bounce;
+      bounce = new Bounce(pin, debounce);
+    }
+
+    bool update(void) { return bounce->update(); }
+
+    bool fallingEdge(void)
+    {
+      bool result;
+      if (1 == idleLevel)
+        result = bounce->fallingEdge();
+      else
+        result = bounce->risingEdge();
+      return result;
+    }
+    
+    bool risingEdge(void)
+    {
+      bool result;
+      if (1 == idleLevel)
+        result = bounce->risingEdge();
+      else
+        result = bounce->fallingEdge();
+      return result;
+    } 
+
+      bool read(void)
+      {
+        bool result = bounce->read();
+        if (0 == idleLevel) 
+          result = !result;
+        return result;
+      }     
+};
+
 // Use long 40ms debounce time on both switches
-Bounce buttonRecord = Bounce(HOOK_PIN, 40);
-Bounce buttonPlay = Bounce(PLAYBACK_BUTTON_PIN, 40);
+BounceZ buttonRecord; // = Bounce(HOOK_PIN, 40);
+BounceZ buttonPlay; // = Bounce(PLAYBACK_BUTTON_PIN, 40);
 
 // Keep track of current state of the device
 enum Mode {Initialising, Ready, Prompting, Recording, Playing};
 Mode mode = Mode::Initialising;
+elapsedMillis theTimer; // used to time out long messages
 
-float beep_volume = 0.04f; // not too loud :-)
+float beep_volume = 0.4f; // not too loud :-) .. but the volume is set in the mixer, really
 
 uint32_t MTPcheckInterval; // default value of device check interval [ms]
+char volname[50] = "Kais Audio guestbook";  // choose a nice name for the SD card volume to appear in your file explorer, or load from gbkcfg.txt
 
 // variables for writing to WAV file
 unsigned long ChunkSize = 0L;
@@ -88,16 +157,103 @@ unsigned long recByteSaved = 0L;
 unsigned long NumSamples = 0L;
 byte byte1, byte2, byte3, byte4;
 
+void getSettings(void)
+{
+  frec = SD.open("gbkcfg.txt");
 
-void setup() {
+  Serial.println();
+  if (frec)
+  {
+    char buffer[50];
 
+    frec.setTimeout(1);
+
+    do
+    {
+      int got = frec.readBytesUntil('\n',buffer,sizeof buffer - 1);
+      if (0 == got)
+        break;
+
+      sscanf(buffer,"hookpin %d",&HOOK_PIN);
+      sscanf(buffer,"hookidle %d",&HOOK_IDLE);
+      sscanf(buffer,"playpin %d",&PLAYBACK_BUTTON_PIN);
+      sscanf(buffer,"playidle %d",&PLAY_IDLE);
+      sscanf(buffer,"micgain %d",&micgain);
+      sscanf(buffer,"speakervol %f",&speakervol);
+      sscanf(buffer,"beepvol %f",&beepvol);
+      sscanf(buffer,"greetingvol %f",&greetingvol);
+      sscanf(buffer,"playvol %f",&playvol);
+      sscanf(buffer,"maxrec %lu",&MAX_RECORDING_TIME_MS);
+      sscanf(buffer,"sgtladdr %d",&sgtladdr);
+
+      // Try to parse a volume name      
+      got = -1;
+      sscanf(buffer,"volname %n",&got);
+      if (got > 0)
+      {
+        strncpy(volname,buffer+got,sizeof volname - 1);
+        for (size_t i = 0; i < sizeof volname; i++)
+          if (volname[i] < 32)
+          {
+            volname[i] = 0;
+            break;
+          }
+      }
+    } while (1);
+    frec.close();
+  }
+  else
+    Serial.println("No gbkcfg.txt found, using default settings");
+    
+  Serial.println("Settings:");
+  Serial.printf("Volume name ''%s''\n",volname);
+  Serial.printf("hookpin %d, idle level %d\n",HOOK_PIN, HOOK_IDLE);
+  Serial.printf("playpin %d, idle level %d\n",PLAYBACK_BUTTON_PIN, PLAY_IDLE);
+  Serial.printf("micgain %d\n",micgain);
+  Serial.printf("speakervol %.2f\n",speakervol);
+  Serial.printf("beepvol %.2f\n",beepvol);
+  Serial.printf("greetingvol %.2f\n",greetingvol);
+  Serial.printf("playvol %.2f\n",playvol); 
+  Serial.printf("Max recording length %.3f seconds\n",(float) MAX_RECORDING_TIME_MS/1000.0f); 
+  Serial.printf("SGTL5000 address %s\n",sgtladdr?"high":"normal"); 
+  Serial.println(); 
+}
+
+void setup() 
+{
   Serial.begin(9600);
   while (!Serial && millis() < 5000) {
     // wait for serial port to connect.
   }
+  print_mode();
   Serial.println("Serial set up correctly");
   Serial.printf("Audio block set to %d samples\n",AUDIO_BLOCK_SAMPLES);
-  print_mode();
+
+  // Initialize the SD card
+  SPI.setMOSI(SDCARD_MOSI_PIN);
+  SPI.setSCK(SDCARD_SCK_PIN);
+
+  do
+  {
+    sd_cs_pin = BUILTIN_SDCARD;
+    if (SD.begin(sd_cs_pin))
+      break;
+    Serial.println("No SD card in built-in slot");
+    delay(250);
+
+    sd_cs_pin = SDCARD_CS_PIN;
+    if (SD.begin(sd_cs_pin))
+      break;
+    Serial.printf("No SD card on CS pin %d\n",sd_cs_pin);
+    delay(250);    
+  } while (1);
+  Serial.printf("SD card correctly initialized: pin %d\n",sd_cs_pin);
+
+  getSettings(); // try to read settings from SD card
+
+  buttonRecord.begin(HOOK_PIN,40,HOOK_IDLE);
+  buttonPlay.begin(PLAYBACK_BUTTON_PIN,40,PLAY_IDLE);
+  
   // Configure the input pins
   pinMode(HOOK_PIN, INPUT_PULLUP);
   pinMode(PLAYBACK_BUTTON_PIN, INPUT_PULLUP);
@@ -107,14 +263,22 @@ void setup() {
   AudioMemory(60);
 
   // Enable the audio shield, select input, and enable output
+  sgtl5000_1.setAddress(sgtladdr);
   sgtl5000_1.enable();
   // Define which input on the audio shield to use (AUDIO_INPUT_LINEIN / AUDIO_INPUT_MIC)
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
   //sgtl5000_1.adcHighPassFilterDisable(); //
-  sgtl5000_1.volume(0.95);
 
-  mixer.gain(0, 1.0f);
-  mixer.gain(1, 1.0f);
+  // ----- Level settings -----
+  sgtl5000_1.micGain(micgain); // set to suit your microphone
+  sgtl5000_1.audioPreProcessorEnable(); // optional: could be a good plan...
+  sgtl5000_1.autoVolumeEnable();        // ...to prevent shouty people overloading the file
+  sgtl5000_1.volume(speakervol); // overall speaker volume
+
+  mixer.gain(0, beepvol);     // beeps
+  mixer.gain(1, greetingvol); // greeting
+  mixer.gain(2, playvol);     // message playback
+  // --------------------------
 
   // Play a beep to indicate system is online
   waveform1.begin(beep_volume, 440, WAVEFORM_SINE);
@@ -122,32 +286,18 @@ void setup() {
   waveform1.amplitude(0);
   delay(1000);
 
-  // Initialize the SD card
-  SPI.setMOSI(SDCARD_MOSI_PIN);
-  SPI.setSCK(SDCARD_SCK_PIN);
-  if (!(SD.begin(SDCARD_CS_PIN))) 
-  {
-    // stop here if no SD card, but print a message
-    while (1) {
-      Serial.println("Unable to access the SD card");
-      delay(500);
-    }
-  }
-    else Serial.println("SD card correctly initialized");
-
-
   // mandatory to begin the MTP session.
     MTP.begin();
 
   // Add SD Card
 //    MTP.addFilesystem(SD, "SD Card");
-    MTP.addFilesystem(SD, "Kais Audio guestbook"); // choose a nice name for the SD card volume to appear in your file explorer
+    MTP.addFilesystem(SD, volname);
     Serial.println("Added SD card via MTP");
     MTPcheckInterval = MTP.storage()->get_DeltaDeviceCheckTimeMS();
     
     // Value in dB
 //  sgtl5000_1.micGain(15);
-  sgtl5000_1.micGain(5); // much lower gain is required for the AOM5024 electret capsule
+//  sgtl5000_1.micGain(5); // much lower gain is required for the AOM5024 electret capsule
 
   // Synchronise the Time object used in the program code with the RTC time provider.
   // See https://github.com/PaulStoffregen/Time
@@ -160,7 +310,8 @@ void setup() {
   mode = Mode::Ready; print_mode();
 }
 
-void loop() {
+void loop() 
+{
   // First, read the buttons
   buttonRecord.update();
   buttonPlay.update();
@@ -182,21 +333,21 @@ void loop() {
       // Wait a second for users to put the handset to their ear
       wait(1000);
       // Play the greeting inviting them to record their message
-      playWav1.play("greeting.wav");    
+      playGreeting.play("greeting.wav");    
       // Wait until the  message has finished playing
-//      while (playWav1.isPlaying()) {
-      while (!playWav1.isStopped()) {
+//      while (playGreeting.isPlaying()) {
+      while (!playGreeting.isStopped()) {
         // Check whether the handset is replaced
         buttonRecord.update();
         buttonPlay.update();
         // Handset is replaced
-        if(buttonRecord.risingEdge()) {
-          playWav1.stop();
+        if (buttonRecord.read()) { // wait() may have lost edge - use the level instead
+          playGreeting.stop();
           mode = Mode::Ready; print_mode();
           return;
         }
         if(buttonPlay.fallingEdge()) {
-          playWav1.stop();
+          playGreeting.stop();
           //playAllRecordings();
           playLastRecording();
           return;
@@ -211,11 +362,14 @@ void loop() {
       waveform1.amplitude(0);
       // Start the recording function
       startRecording();
+      theTimer = 0;
       break;
 
     case Mode::Recording:
       // Handset is replaced
-      if(buttonRecord.risingEdge()){
+      if ( buttonRecord.risingEdge()
+        || theTimer >= MAX_RECORDING_TIME_MS) // ...or has been off-hook too long)
+      {
         // Debug log
         Serial.println("Stopping Recording");
         // Stop recording
@@ -371,19 +525,19 @@ void playAllRecordings() {
       wait(750);
       waveform1.amplitude(0);
       // Play the file
-      playWav1.play(entry.name());
+      playMessage.play(entry.name());
       mode = Mode::Playing; print_mode();
     }
     entry.close();
 
 //    while (playWav1.isPlaying()) { // strangely enough, this works for playRaw, but it does not work properly for playWav
-    while (!playWav1.isStopped()) { // this works for playWav
+    while (!playMessage.isStopped()) { // this works for playWav
       buttonPlay.update();
       buttonRecord.update();
       // Button is pressed again
 //      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
       if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) { 
-        playWav1.stop();
+        playMessage.stop();
         mode = Mode::Ready; print_mode();
         return;
       }   
@@ -408,15 +562,15 @@ void playLastRecording() {
       // now play file with index idx == last recorded file
       snprintf(filename, 11, " %05d.wav", idx);
       Serial.println(filename);
-      playWav1.play(filename);
+      playMessage.play(filename);
       mode = Mode::Playing; print_mode();
-      while (!playWav1.isStopped()) { // this works for playWav
+      while (!playMessage.isStopped()) { // this works for playWav
       buttonPlay.update();
       buttonRecord.update();
       // Button is pressed again
 //      if(buttonPlay.risingEdge() || buttonRecord.risingEdge()) { // FIX
       if(buttonPlay.fallingEdge() || buttonRecord.risingEdge()) {
-        playWav1.stop();
+        playMessage.stop();
         mode = Mode::Ready; print_mode();
         return;
       }   

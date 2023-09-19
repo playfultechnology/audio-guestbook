@@ -1,16 +1,22 @@
 # audio-guestbook
 The audio guestbook is a converted telephone handset that guests can use to leave recorded messages at weddings, parties and other events, as sold by companies such as "After the Tone", "Fête Fone", "Life on Record", "At the Beep", and others.
 
-Watch the full step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
+Watch the full (but now slightly outdated) step-by-step tutorial on how to use the code here to build your own at https://youtu.be/dI6ielrP1SE
  
  ---
 ## Disabled MTP during recording
 In some cases, the MTP capability (allowing file transfer without removing the SD card) seems to interfere with recording. MTP medium-change checking is thus _disabled_ during recording. A suitable message is sent to the serial monitor so you can see when it's been enabled.
+
+---
+
 ## Audio tweaks
 ### Background
 The "modifications by h4yn0nnym0u5e, October 27th 2022" work significantly better if the audio library is "tweaked" to use larger data blocks and thus less-frequent audio updates. This allows more time for an SD card write before an interrupt is missed and audio data are lost.
+ 
 ### Installation method
-Unfortunately, "installation" is a bit messy, but you only have to do it once (unless you update your Arduino IDE or Teensyduino). The guestbook sketch folder contains two Arduino architecture configuration files, `boards.local.txt` and`platform.txt`. These must be used to update your existing configuration files; in Windows systems these will typically be in `C:\Program Files (x86)\Arduino\hardware\teensy\avr` [todo: where are they on Linux and Mac?].
+Unfortunately, "installation" is a bit messy, but you only have to do it once (unless you update your Arduino IDE or Teensyduino).
+#### Tools menu option
+ The guestbook sketch folder contains two Arduino architecture configuration files, `boards.local.txt` and`platform.txt`. These must be used to update your existing configuration files; in Windows systems these will typically be in `C:\Program Files (x86)\Arduino\hardware\teensy\avr` [todo: where are they on Linux and Mac?].
 
 Before you do anything else, **_back up the existing configuration files_**! Then, make sure all running copies of the Arduino IDE are closed.
 
@@ -19,12 +25,32 @@ The content of `boards.local.txt` should be merged with the existing file; if yo
 You can either replace the existing `platform.txt` with the new one, or if the existing one looks _very_ different, try to edit it to include all four references to `build.flags.audio`, in similar locations to those found in the replacement file. 
 
 Once the configuration files have been amended, run the Arduino IDE and look at the Tools menu. All being well, you will see a new "Audio tweaks" setting available, with options `Normal` and `Bigger blocks (256 samples)`.
-### In use
-Open the audio guestbook sketch, ensure you have the correct Teensy options set, and set "Audio tweaks" to the `Bigger blocks (256 samples)` option. Upload as usual, and check that there's a message on the Serial console which says "Audio block set to 256 samples". If this is present, the tweaks installation is successful, and you should find your audio recordings less prone to glitches and dropouts. You should still use a decent SD card, and format it "properly" - there's plenty of guidance in the Teensy forum.
+
+---
+
+### MTP library
+This _must_ be downloaded from https://github.com/KurtE/MTP_Teensy and installed in your libraries folder:
+![](https://github.com/h4yn0nnym0u5e/audio-guestbook/raw/feature/doc-01/images/MTP-location.png)
+
+---
+
+## In use
+If you have downloaded and unzipped the code correctly, your file structure should look something like this (note the MTP_Teensy library in its folder, as well as this application in its sketch folder):
+![](https://github.com/h4yn0nnym0u5e/audio-guestbook/raw/feature/doc-01/images/file-structure.png)
+
+Open the audio-guestbook sketch, and you should have three tabs in the Arduino IDE:
+![](https://github.com/h4yn0nnym0u5e/audio-guestbook/raw/feature/doc-01/images/IDE-tabs.png)
+
+Ensure you have the correct Teensy options, setting the correct Teensy board, the "USB Type" to `Serial + MTP Disk (Experimental)`, and "Audio tweaks" to  `Bigger blocks (256 samples)`. 
+![](https://github.com/h4yn0nnym0u5e/audio-guestbook/raw/feature/doc-01/images/tools-selection.png)
+
+Upload as usual, and check that there's a message on the Serial console which says "Audio block set to 256 samples". If this is present, the tweaks installation is successful, and you should find your audio recordings less prone to glitches and dropouts. You should still use a decent SD card, and format it "properly" - there's plenty of guidance in the Teensy forum.
 
 For most audio projects, leave Audio tweaks set to `Normal`, as the audio library isn't fully tested with 256-sample blocks.
 
-_DO NOT_ copy the `play_wav_sd.cpp` and `.h` files to your Audio library: They _should_ appear as extra tabs in your Arduino IDE, but are _only_ of use for this project and _will_ break other audio applications using SD playback!
+_DO NOT_ copy the `play_sd_wav.cpp` and `.h` files to your Audio library: They _should_ appear as extra tabs in your Arduino IDE, but are _only_ of use for this project and _will_ break other audio applications using SD playback!
+
+---
 
 ## Technical stuff
 ### Tweaks
@@ -63,7 +89,7 @@ You can monitor the time taken for SD card writes by defining the symbol `INSTRU
 * shielded microphone cable
 
 
-![](https://github.com/DD4WH/audio-guestbook/blob/main/DD4WH_Audio_guest_book_611.jpg)
+![](https://raw.githubusercontent.com/playfultechnology/audio-guestbook/main/DD4WH_Audio_guest_book_611.jpg)
 
 
 ![](https://github.com/playfultechnology/audio-guestbook/raw/main/thumbnail.jpg)
